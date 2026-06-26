@@ -5,15 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LoRA Adapter Routing Visualizer | llm-d</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg-primary: #0b0e17;
-  --bg-secondary: #131722;
+  --bg-primary: #0a0e17;
+  --bg-secondary: #111827;
   --bg-tertiary: #1c2133;
-  --bg-card: #171c2e;
+  --bg-card: #151b2e;
+  --bg-card-hover: #1a2240;
   --border: #252d44;
   --border-light: #354166;
   --text-primary: #e8ecf4;
@@ -23,8 +24,10 @@
   --accent-glow: rgba(59,130,246,0.25);
   --accent-dim: #2563eb;
   --success: #10b981;
+  --success-glow: rgba(16,185,129,0.3);
   --warning: #f59e0b;
   --danger: #ef4444;
+  --danger-glow: rgba(239,68,68,0.3);
   --legal: #10b981;
   --code-review: #8b5cf6;
   --medical: #ef4444;
@@ -40,23 +43,21 @@ body {
   background: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
   overflow-x: hidden;
 }
 
 /* ==================== HEADER ==================== */
 .header {
-  background: linear-gradient(180deg, rgba(19,23,34,0.97), rgba(11,14,23,0.97));
+  background: linear-gradient(180deg, rgba(17,24,39,0.97), rgba(10,14,23,0.97));
   border-bottom: 1px solid var(--border);
-  padding: 0.75rem 1.5rem;
+  padding: 0.65rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 100;
-  backdrop-filter: blur(12px);
+  backdrop-filter: blur(16px);
 }
 .header-brand {
   display: flex;
@@ -64,7 +65,7 @@ body {
   gap: 0.75rem;
 }
 .header-logo {
-  width: 34px; height: 34px;
+  width: 36px; height: 36px;
   background: linear-gradient(135deg, var(--accent), #60a5fa);
   border-radius: 8px;
   display: flex; align-items: center; justify-content: center;
@@ -73,7 +74,7 @@ body {
   font-size: 0.55rem;
   color: #fff;
   letter-spacing: -0.03em;
-  box-shadow: 0 0 20px var(--accent-glow);
+  box-shadow: 0 0 24px var(--accent-glow);
   line-height: 1;
 }
 .header h1 {
@@ -104,33 +105,38 @@ body {
   color: var(--success);
   border: 1px solid rgba(16,185,129,0.25);
 }
+.header-right {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+}
 
 /* ==================== CONTROLS BAR ==================== */
 .controls-bar {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
-  padding: 0.55rem 1.5rem;
+  padding: 0.5rem 1.5rem;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.65rem;
   flex-wrap: wrap;
 }
 .control-group {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
 }
 .control-group label {
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   white-space: nowrap;
   font-weight: 500;
 }
 .btn {
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
-  padding: 0.35rem 0.75rem;
+  padding: 0.3rem 0.65rem;
   border-radius: 6px;
   border: 1px solid var(--border);
   background: var(--bg-tertiary);
@@ -140,19 +146,22 @@ body {
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 .btn:hover { border-color: var(--accent); background: rgba(59,130,246,0.08); }
 .btn.active, .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .btn.primary:hover { background: var(--accent-dim); }
+.btn-sm { font-size: 0.62rem; padding: 0.2rem 0.5rem; }
+.btn-danger { border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: rgba(239,68,68,0.1); }
 select {
   font-family: var(--font-sans);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   background: var(--bg-tertiary);
   color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 0.3rem 0.5rem;
+  padding: 0.28rem 0.45rem;
   cursor: pointer;
 }
 select:focus { outline: none; border-color: var(--accent); }
@@ -180,9 +189,22 @@ input[type="range"]::-moz-range-thumb {
   border: none;
   cursor: pointer;
 }
+input[type="text"], input[type="number"] {
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.28rem 0.45rem;
+}
+input[type="text"]:focus, input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
 .speed-display {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--accent);
   min-width: 2rem;
   text-align: center;
@@ -192,7 +214,136 @@ input[type="range"]::-moz-range-thumb {
   width: 1px;
   height: 22px;
   background: var(--border);
-  margin: 0 0.15rem;
+  margin: 0 0.1rem;
+}
+
+/* ==================== SCENARIO BUTTONS ==================== */
+.scenario-group {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.scenario-btn {
+  font-size: 0.62rem;
+  padding: 0.22rem 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  transition: all 0.15s;
+}
+.scenario-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.scenario-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ==================== ADAPTER MANAGER PANEL ==================== */
+.adapter-manager {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.3s ease;
+}
+.adapter-manager.open {
+  max-height: 500px;
+}
+.adapter-manager-inner {
+  padding: 0.65rem 1.5rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.am-section {
+  flex: 1;
+  min-width: 280px;
+}
+.am-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+.am-form {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.am-adapter-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.am-adapter-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  font-weight: 600;
+  padding: 0.18rem 0.4rem;
+  border-radius: 5px;
+  border: 1px solid;
+}
+.am-adapter-item .am-size {
+  font-size: 0.52rem;
+  opacity: 0.6;
+  font-weight: 400;
+}
+.am-adapter-item .am-del {
+  cursor: pointer;
+  opacity: 0.5;
+  font-size: 0.72rem;
+  line-height: 1;
+}
+.am-adapter-item .am-del:hover { opacity: 1; }
+.am-assign-section {
+  flex: 1.5;
+  min-width: 380px;
+}
+.am-pod-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-bottom: 0.25rem;
+  font-size: 0.65rem;
+}
+.am-pod-name {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--accent);
+  min-width: 55px;
+  font-size: 0.62rem;
+}
+.am-pod-adapters {
+  display: flex;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+.am-pod-adapter-badge {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid;
+  transition: opacity 0.15s;
+}
+.am-pod-adapter-badge.inactive {
+  opacity: 0.25;
+}
+.am-pod-adapter-badge.active {
+  opacity: 1;
 }
 
 /* ==================== MIX PANEL ==================== */
@@ -200,337 +351,115 @@ input[type="range"]::-moz-range-thumb {
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border);
   padding: 0.5rem 1.5rem;
-  display: none;
-  gap: 1.25rem;
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  display: flex;
+  gap: 1rem;
   align-items: center;
   flex-wrap: wrap;
 }
-.mix-panel.visible { display: flex; }
+.mix-panel.visible { max-height: 200px; padding: 0.5rem 1.5rem; }
 .mix-group {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
 }
 .mix-group label {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 500;
-  min-width: 90px;
+  min-width: 85px;
   white-space: nowrap;
 }
-.mix-group input[type="range"] { width: 55px; }
+.mix-group input[type="range"] { width: 52px; }
 .mix-val {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
   min-width: 22px;
   text-align: right;
 }
 
-/* ==================== MAIN LAYOUT ==================== */
-.main-content {
-  flex: 1;
+/* ==================== CANVAS LAYOUT ==================== */
+.canvas-section {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  grid-template-rows: auto 1fr auto;
-  gap: 0;
-  min-height: 0;
-  overflow: hidden;
+  min-height: 460px;
+  border-bottom: 1px solid var(--border);
 }
-
-/* ==================== MODE HEADERS ==================== */
-.mode-header {
-  padding: 0.6rem 1.25rem;
+.canvas-col {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+.canvas-col:last-child { border-right: none; }
+.canvas-header {
+  padding: 0.5rem 1rem;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
   background: var(--bg-secondary);
 }
-.mode-header:first-child { border-right: 1px solid var(--border); }
-.mode-header h2 {
-  font-size: 0.82rem;
+.canvas-header h2 {
+  font-size: 0.8rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  letter-spacing: -0.01em;
 }
 .mode-icon {
   width: 8px; height: 8px;
   border-radius: 50%;
   display: inline-block;
 }
-.mode-rr .mode-icon { background: var(--danger); box-shadow: 0 0 8px rgba(239,68,68,0.5); }
-.mode-smart .mode-icon { background: var(--success); box-shadow: 0 0 8px rgba(16,185,129,0.5); }
-.mode-stats {
+.mode-rr .mode-icon { background: var(--danger); box-shadow: 0 0 8px var(--danger-glow); }
+.mode-smart .mode-icon { background: var(--success); box-shadow: 0 0 8px var(--success-glow); }
+.canvas-stats {
   display: flex;
-  gap: 0.85rem;
+  gap: 0.65rem;
 }
-.mode-stat {
+.canvas-stat {
   font-family: var(--font-mono);
-  font-size: 0.68rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
 }
-.mode-stat .val {
+.canvas-stat .val {
   color: var(--text-primary);
   font-weight: 700;
 }
-
-/* ==================== CLUSTER PANELS ==================== */
-.cluster-panel {
-  padding: 1rem 1rem;
-  overflow-y: auto;
-  position: relative;
-  min-height: 0;
-}
-.cluster-panel:first-of-type { border-right: 1px solid var(--border); }
-
-/* Request source area */
-.request-source {
-  text-align: center;
-  margin-bottom: 0.85rem;
-  padding: 0.45rem 0.6rem;
-  border: 1px dashed var(--border);
-  border-radius: 8px;
-  background: rgba(59,130,246,0.02);
-  font-size: 0.68rem;
-  color: var(--text-muted);
-  position: relative;
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4rem;
-  flex-wrap: wrap;
-}
-
-/* Pod Grid */
-.pod-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.6rem;
-}
-
-/* Pod Card */
-.pod-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 0.65rem;
-  transition: border-color 0.3s, box-shadow 0.3s;
-  position: relative;
-  overflow: hidden;
-}
-.pod-card::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 2px;
-  background: transparent;
-  transition: background 0.3s;
-}
-.pod-card.active {
-  border-color: rgba(59,130,246,0.5);
-  box-shadow: 0 0 18px var(--accent-glow), inset 0 0 18px rgba(59,130,246,0.04);
-}
-.pod-card.active::before { background: var(--accent); }
-.pod-card.swap-flash {
-  animation: swapFlash 0.7s ease;
-}
-@keyframes swapFlash {
-  0% { border-color: var(--border); box-shadow: none; }
-  15% { border-color: var(--warning); box-shadow: 0 0 24px rgba(245,158,11,0.4); }
-  40% { border-color: var(--danger); box-shadow: 0 0 20px rgba(239,68,68,0.35); }
-  70% { border-color: var(--warning); box-shadow: 0 0 12px rgba(245,158,11,0.2); }
-  100% { border-color: var(--border); box-shadow: none; }
-}
-.pod-card.loading-adapter::after {
-  content: 'LOADING ADAPTER...';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(245,158,11,0.08);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-size: 0.58rem;
-  color: var(--warning);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  border-radius: 10px;
-  animation: loadPulse 0.8s ease infinite;
-  pointer-events: none;
-  z-index: 2;
-}
-@keyframes loadPulse {
-  0%, 100% { opacity: 0.5; }
-  50% { opacity: 1; }
-}
-.pod-name {
-  font-family: var(--font-mono);
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 0.15rem;
-}
-.pod-model {
-  font-size: 0.58rem;
-  color: var(--text-muted);
-  margin-bottom: 0.4rem;
-}
-.pod-adapters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem;
-  margin-bottom: 0.4rem;
-  min-height: 20px;
-}
-.adapter-badge {
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  padding: 0.12rem 0.35rem;
-  border-radius: 4px;
-  font-weight: 600;
-  white-space: nowrap;
-  letter-spacing: -0.01em;
-}
-.adapter-badge.legal { background: rgba(16,185,129,0.12); color: var(--legal); border: 1px solid rgba(16,185,129,0.25); }
-.adapter-badge.code-review { background: rgba(139,92,246,0.12); color: var(--code-review); border: 1px solid rgba(139,92,246,0.25); }
-.adapter-badge.medical { background: rgba(239,68,68,0.12); color: var(--medical); border: 1px solid rgba(239,68,68,0.25); }
-.adapter-badge.finance { background: rgba(245,158,11,0.12); color: var(--finance); border: 1px solid rgba(245,158,11,0.25); }
-.adapter-badge.support { background: rgba(6,182,212,0.12); color: var(--support); border: 1px solid rgba(6,182,212,0.25); }
-.pod-meters {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.meter-row {
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.meter-label {
-  font-size: 0.55rem;
-  color: var(--text-muted);
-  width: 26px;
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-.meter-bar {
+.canvas-wrap {
   flex: 1;
-  height: 4px;
-  background: rgba(255,255,255,0.04);
-  border-radius: 2px;
-  overflow: hidden;
+  position: relative;
+  background: var(--bg-primary);
+  min-height: 380px;
 }
-.meter-fill {
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
   height: 100%;
-  border-radius: 2px;
-  transition: width 0.5s ease, background-color 0.3s;
-}
-.meter-fill.gpu { background: var(--accent); }
-.meter-fill.mem { background: #8b5cf6; }
-.meter-fill.gpu.high { background: var(--warning); }
-.meter-fill.gpu.critical { background: var(--danger); }
-.meter-val {
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  color: var(--text-muted);
-  width: 26px;
-  text-align: right;
-}
-.pod-queue {
-  margin-top: 0.3rem;
-  display: flex;
-  align-items: center;
-  gap: 0.3rem;
-}
-.pod-queue-label {
-  font-size: 0.55rem;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-.queue-dots {
-  display: flex;
-  gap: 2px;
-}
-.queue-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  opacity: 0.15;
-  transition: opacity 0.3s;
-}
-.queue-dot.filled { opacity: 1; }
-.queue-dot.warn { background: var(--warning); }
-.queue-dot.crit { background: var(--danger); }
-.pod-swaps {
-  position: absolute;
-  top: 0.4rem;
-  right: 0.4rem;
-  font-family: var(--font-mono);
-  font-size: 0.55rem;
-  color: var(--warning);
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-  font-weight: 700;
 }
 
-/* ==================== REQUEST PARTICLES ==================== */
-.request-particle {
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: 10;
-}
-.request-particle .particle-glow {
-  position: absolute;
-  top: -3px; left: -3px;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: inherit;
-  opacity: 0.25;
-  filter: blur(4px);
-}
-.request-particle .particle-tag {
-  position: absolute;
-  top: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: var(--font-mono);
-  font-size: 0.5rem;
-  white-space: nowrap;
-  padding: 1px 4px;
-  border-radius: 3px;
-  background: rgba(0,0,0,0.75);
-  font-weight: 600;
-  pointer-events: none;
-}
-
-/* ==================== SCORING PANEL ==================== */
+/* ==================== EPP SCORING PANEL ==================== */
 .scoring-panel {
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   display: grid;
   grid-template-columns: 1fr 1fr;
   background: var(--bg-secondary);
 }
 .scoring-section {
-  padding: 0.65rem 1rem;
-  max-height: 200px;
+  padding: 0.55rem 1rem;
+  max-height: 180px;
   overflow-y: auto;
 }
 .scoring-section:first-child { border-right: 1px solid var(--border); }
 .scoring-title {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 700;
   color: var(--text-secondary);
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.35rem;
   display: flex;
   align-items: center;
   gap: 0.3rem;
@@ -542,23 +471,24 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
 }
 .scoring-info {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
   display: flex;
   align-items: center;
   gap: 0.3rem;
+  flex-wrap: wrap;
 }
 .scoring-info .req-badge {
   font-family: var(--font-mono);
-  font-size: 0.58rem;
+  font-size: 0.56rem;
   font-weight: 600;
-  padding: 0.1rem 0.35rem;
+  padding: 0.1rem 0.3rem;
   border-radius: 3px;
 }
 .score-table {
   width: 100%;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-family: var(--font-mono);
   border-collapse: collapse;
 }
@@ -566,20 +496,20 @@ input[type="range"]::-moz-range-thumb {
   text-align: left;
   color: var(--text-muted);
   font-weight: 600;
-  padding: 0.2rem 0.25rem;
+  padding: 0.18rem 0.2rem;
   border-bottom: 1px solid var(--border);
-  font-size: 0.58rem;
+  font-size: 0.55rem;
   text-transform: uppercase;
 }
 .score-table td {
-  padding: 0.2rem 0.25rem;
+  padding: 0.18rem 0.2rem;
   color: var(--text-secondary);
 }
 .score-table tr.winner td {
   color: var(--success);
   font-weight: 700;
 }
-.score-bar-cell { width: 50px; }
+.score-bar-cell { width: 45px; }
 .score-bar-bg {
   width: 100%;
   height: 5px;
@@ -595,19 +525,24 @@ input[type="range"]::-moz-range-thumb {
 }
 .score-bar-fill.best { background: var(--success); }
 
-/* ==================== METRICS DASHBOARD ==================== */
+/* ==================== SPARKLINE METRICS DASHBOARD ==================== */
 .metrics-dashboard {
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border);
-  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
 }
-.metrics-title {
-  font-size: 0.78rem;
-  font-weight: 700;
-  margin-bottom: 0.65rem;
+.metrics-header {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.metrics-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-secondary);
@@ -622,98 +557,96 @@ input[type="range"]::-moz-range-thumb {
   0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(16,185,129,0.4); }
   50% { opacity: 0.6; box-shadow: 0 0 0 5px rgba(16,185,129,0); }
 }
+.metrics-legend {
+  display: flex;
+  gap: 0.75rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+}
+.metrics-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.metrics-legend-dot {
+  width: 10px;
+  height: 3px;
+  border-radius: 2px;
+}
 .metrics-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
+  gap: 0.65rem;
 }
 .metric-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 0.7rem 0.85rem;
+  padding: 0.6rem 0.75rem;
 }
 .metric-label {
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
 }
 .metric-values {
   display: flex;
-  gap: 0.85rem;
+  gap: 0.7rem;
+  margin-bottom: 0.35rem;
 }
 .metric-col { flex: 1; }
 .metric-col-label {
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  margin-bottom: 0.15rem;
+  margin-bottom: 0.1rem;
 }
 .metric-col-label.rr { color: var(--danger); }
 .metric-col-label.smart { color: var(--success); }
 .metric-value {
   font-family: var(--font-mono);
-  font-size: 1.2rem;
+  font-size: 1.1rem;
   font-weight: 800;
   line-height: 1;
 }
 .metric-value.rr { color: var(--text-primary); }
 .metric-value.smart { color: var(--accent); }
-.metric-value.better { color: var(--success) !important; }
-.metric-value.worse { color: var(--danger) !important; }
+.metric-value.better { color: var(--success); }
+.metric-value.worse { color: var(--danger); }
 .metric-unit {
-  font-size: 0.6rem;
+  font-size: 0.58rem;
   color: var(--text-muted);
   font-weight: 400;
 }
-.sparkline-row {
-  height: 28px;
-  margin-top: 0.4rem;
-  display: flex;
-  align-items: flex-end;
-  gap: 1px;
-  overflow: hidden;
+.sparkline-canvas {
+  width: 100%;
+  height: 36px;
+  display: block;
 }
-.spark-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 1px;
-  justify-content: flex-end;
-  min-width: 0;
-}
-.spark-bar {
-  border-radius: 1px 1px 0 0;
-  min-height: 1px;
-  transition: height 0.3s;
-}
-.spark-bar.rr { background: rgba(239,68,68,0.35); }
-.spark-bar.smart { background: rgba(16,185,129,0.55); }
 
-/* ==================== BOTTOM BAR ==================== */
+/* ==================== LEGEND & FOOTER ==================== */
 .bottom-bar {
   background: var(--bg-secondary);
-  border-top: 1px solid var(--border);
-  padding: 0.55rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding: 0.45rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.6rem;
+  gap: 0.5rem;
 }
 .legend {
   display: flex;
-  gap: 0.85rem;
+  gap: 0.7rem;
   align-items: center;
   flex-wrap: wrap;
 }
 .legend-title {
-  font-size: 0.65rem;
+  font-size: 0.62rem;
   color: var(--text-muted);
   font-weight: 700;
   text-transform: uppercase;
@@ -722,48 +655,21 @@ input[type="range"]::-moz-range-thumb {
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
-  font-size: 0.65rem;
+  gap: 0.25rem;
+  font-size: 0.62rem;
   color: var(--text-secondary);
 }
 .legend-dot {
   width: 8px; height: 8px;
   border-radius: 3px;
 }
-.adapter-toggles {
-  display: flex;
-  gap: 0.35rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.adapter-toggle {
-  font-family: var(--font-mono);
-  font-size: 0.6rem;
-  font-weight: 600;
-  padding: 0.18rem 0.45rem;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.adapter-toggle.enabled {
-  border-color: currentColor;
-  opacity: 1;
-}
-.adapter-toggle.disabled {
-  opacity: 0.35;
-  text-decoration: line-through;
-}
 
-/* ==================== FOOTER ==================== */
 .footer {
   background: var(--bg-secondary);
   border-top: 1px solid var(--border);
-  padding: 0.6rem 1.5rem;
+  padding: 0.55rem 1.5rem;
   text-align: center;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 .footer a {
@@ -789,7 +695,7 @@ input[type="range"]::-moz-range-thumb {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 14px;
-  padding: 2rem 2.25rem;
+  padding: 1.75rem 2rem;
   max-width: 620px;
   width: 90%;
   max-height: 82vh;
@@ -797,20 +703,19 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 20px 60px rgba(0,0,0,0.5);
 }
 .info-box h3 {
-  font-size: 1.15rem;
-  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  margin-bottom: 0.85rem;
   color: var(--accent);
   font-weight: 800;
-  letter-spacing: -0.01em;
 }
 .info-box p {
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
-  margin-bottom: 0.75rem;
-  line-height: 1.65;
+  margin-bottom: 0.65rem;
+  line-height: 1.6;
 }
 .info-box strong { color: var(--text-primary); }
-.info-box .close-btn { margin-top: 1.25rem; }
+.info-box .close-btn { margin-top: 1rem; }
 
 /* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar { width: 5px; }
@@ -820,15 +725,15 @@ input[type="range"]::-moz-range-thumb {
 
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 1100px) {
-  .pod-grid { grid-template-columns: repeat(2, 1fr); }
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
-  .main-content { grid-template-columns: 1fr; }
-  .mode-header:first-child, .cluster-panel:first-of-type, .scoring-section:first-child { border-right: none; }
+  .canvas-section { grid-template-columns: 1fr; min-height: 360px; }
+  .canvas-col:first-child { border-right: none; border-bottom: 1px solid var(--border); }
   .scoring-panel { grid-template-columns: 1fr; }
+  .scoring-section:first-child { border-right: none; border-bottom: 1px solid var(--border); }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
-  .controls-bar { padding: 0.5rem 1rem; }
+  .controls-bar { padding: 0.4rem 1rem; }
 }
 </style>
 </head>
@@ -846,7 +751,7 @@ input[type="range"]::-moz-range-thumb {
       <span class="badge badge-v05">v0.5</span>
     </div>
   </div>
-  <div style="display:flex;gap:0.4rem;">
+  <div class="header-right">
     <button class="btn" onclick="toggleInfo()">? How it works</button>
   </div>
 </header>
@@ -862,94 +767,118 @@ input[type="range"]::-moz-range-thumb {
   <div class="sep"></div>
   <div class="control-group">
     <label>Speed</label>
-    <input type="range" id="speedSlider" min="1" max="10" value="3" style="width:70px" oninput="updateSpeed(this.value)">
+    <input type="range" id="speedSlider" min="1" max="10" value="3" style="width:65px" oninput="updateSpeed(this.value)">
     <span class="speed-display" id="speedDisplay">3x</span>
   </div>
   <div class="sep"></div>
   <div class="control-group">
-    <label>Pods</label>
-    <select id="podCount" onchange="changePodCount(+this.value)">
-      <option value="4">4</option>
-      <option value="6" selected>6</option>
-      <option value="8">8</option>
-      <option value="9">9</option>
-    </select>
-  </div>
-  <div class="control-group">
-    <label>Adapter Slots</label>
-    <select id="adapterSlots" onchange="changeAdapterSlots(+this.value)">
-      <option value="2">2</option>
-      <option value="3" selected>3</option>
-      <option value="4">4</option>
-    </select>
+    <label>Scenario</label>
+    <div class="scenario-group" id="scenarioGroup">
+      <button class="scenario-btn active" data-scenario="multi-tenant" onclick="applyScenario('multi-tenant',this)">Multi-tenant SaaS</button>
+      <button class="scenario-btn" data-scenario="domain-expert" onclick="applyScenario('domain-expert',this)">Domain Expert</button>
+      <button class="scenario-btn" data-scenario="ab-testing" onclick="applyScenario('ab-testing',this)">A/B Testing</button>
+    </div>
   </div>
   <div class="sep"></div>
   <div class="control-group">
-    <button class="btn" id="btnMix" onclick="toggleMixPanel()">Adjust Request Mix</button>
+    <button class="btn" id="btnMix" onclick="toggleMixPanel()">Request Mix</button>
+    <button class="btn" id="btnAdapterMgr" onclick="toggleAdapterManager()">Adapter Manager</button>
   </div>
 </div>
 
-<!-- Mix Panel -->
+<!-- Request Mix Panel -->
 <div class="mix-panel" id="mixPanel"></div>
 
-<!-- Main Content: Side-by-Side -->
-<div class="main-content">
-  <!-- Round Robin Header -->
-  <div class="mode-header mode-rr">
-    <h2><span class="mode-icon"></span> Naive Round-Robin</h2>
-    <div class="mode-stats">
-      <span class="mode-stat">Swaps: <span class="val" id="rr-swaps-hdr">0</span></span>
-      <span class="mode-stat">Reqs: <span class="val" id="rr-reqs-hdr">0</span></span>
+<!-- Adapter Manager Panel -->
+<div class="adapter-manager" id="adapterManager">
+  <div class="adapter-manager-inner">
+    <div class="am-section">
+      <div class="am-section-title">Create Adapter</div>
+      <div class="am-form">
+        <input type="text" id="amName" placeholder="adapter-name" style="width:110px">
+        <input type="number" id="amSize" placeholder="MB" style="width:55px" min="5" max="1000" value="50">
+        <select id="amDomain">
+          <option value="legal">Legal</option>
+          <option value="code">Code Review</option>
+          <option value="medical">Medical</option>
+          <option value="finance">Finance</option>
+          <option value="support">Support</option>
+        </select>
+        <button class="btn btn-sm primary" onclick="createAdapter()">+ Add</button>
+      </div>
+      <div class="am-section-title" style="margin-top:0.3rem">Active Adapters</div>
+      <div class="am-adapter-list" id="amAdapterList"></div>
     </div>
-  </div>
-  <!-- Smart Header -->
-  <div class="mode-header mode-smart">
-    <h2><span class="mode-icon"></span> llm-d Smart Routing (EPP)</h2>
-    <div class="mode-stats">
-      <span class="mode-stat">Swaps: <span class="val" id="smart-swaps-hdr">0</span></span>
-      <span class="mode-stat">Reqs: <span class="val" id="smart-reqs-hdr">0</span></span>
-    </div>
-  </div>
-
-  <!-- Cluster Panels -->
-  <div class="cluster-panel" id="rrPanel">
-    <div class="request-source" id="rrSource">Incoming Requests</div>
-    <div class="pod-grid" id="rrGrid"></div>
-  </div>
-  <div class="cluster-panel" id="smartPanel">
-    <div class="request-source" id="smartSource">Incoming Requests</div>
-    <div class="pod-grid" id="smartGrid"></div>
-  </div>
-
-  <!-- Scoring Panels -->
-  <div class="scoring-panel">
-    <div class="scoring-section">
-      <div class="scoring-title"><span class="dot" style="background:var(--danger)"></span> Round-Robin Decision</div>
-      <div id="rrScoring"><p style="font-size:0.65rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p></div>
-    </div>
-    <div class="scoring-section">
-      <div class="scoring-title"><span class="dot" style="background:var(--success)"></span> EPP Scoring Breakdown</div>
-      <div id="smartScoring"><p style="font-size:0.65rem;color:var(--text-muted)">Waiting for next request...</p></div>
+    <div class="am-assign-section">
+      <div class="am-section-title">Pod Assignments (click adapters to toggle)</div>
+      <div id="amPodAssignments"></div>
     </div>
   </div>
 </div>
 
-<!-- Metrics Dashboard -->
+<!-- Canvas Section: Side-by-Side Race Mode -->
+<div class="canvas-section">
+  <!-- Round Robin Column -->
+  <div class="canvas-col">
+    <div class="canvas-header mode-rr">
+      <h2><span class="mode-icon"></span> Naive Round-Robin</h2>
+      <div class="canvas-stats">
+        <span class="canvas-stat">Swaps: <span class="val" id="rr-swaps-hdr">0</span></span>
+        <span class="canvas-stat">Lat: <span class="val" id="rr-lat-hdr">0</span><span class="metric-unit">ms</span></span>
+        <span class="canvas-stat">Tput: <span class="val" id="rr-tput-hdr">0.0</span><span class="metric-unit">r/s</span></span>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="rrCanvasWrap">
+      <canvas id="rrCanvas"></canvas>
+    </div>
+  </div>
+  <!-- Smart Routing Column -->
+  <div class="canvas-col">
+    <div class="canvas-header mode-smart">
+      <h2><span class="mode-icon"></span> llm-d Smart Routing (EPP)</h2>
+      <div class="canvas-stats">
+        <span class="canvas-stat">Swaps: <span class="val" id="smart-swaps-hdr">0</span></span>
+        <span class="canvas-stat">Lat: <span class="val" id="smart-lat-hdr">0</span><span class="metric-unit">ms</span></span>
+        <span class="canvas-stat">Tput: <span class="val" id="smart-tput-hdr">0.0</span><span class="metric-unit">r/s</span></span>
+      </div>
+    </div>
+    <div class="canvas-wrap" id="smartCanvasWrap">
+      <canvas id="smartCanvas"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- EPP Scoring Breakdown Panel -->
+<div class="scoring-panel">
+  <div class="scoring-section">
+    <div class="scoring-title"><span class="dot" style="background:var(--danger)"></span> Round-Robin Decision</div>
+    <div id="rrScoring"><p style="font-size:0.62rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p></div>
+  </div>
+  <div class="scoring-section">
+    <div class="scoring-title"><span class="dot" style="background:var(--success)"></span> EPP Scoring Breakdown</div>
+    <div id="smartScoring"><p style="font-size:0.62rem;color:var(--text-muted)">Waiting for next request...</p></div>
+  </div>
+</div>
+
+<!-- Sparkline Metrics Dashboard -->
 <div class="metrics-dashboard">
-  <div class="metrics-title"><span class="pulse-dot"></span> Live Metrics Comparison</div>
+  <div class="metrics-header">
+    <div class="metrics-title"><span class="pulse-dot"></span> Live Metrics Comparison</div>
+    <div class="metrics-legend">
+      <div class="metrics-legend-item"><div class="metrics-legend-dot" style="background:var(--danger)"></div> <span style="color:var(--danger)">Round-Robin</span></div>
+      <div class="metrics-legend-item"><div class="metrics-legend-dot" style="background:var(--success)"></div> <span style="color:var(--success)">Smart (EPP)</span></div>
+    </div>
+  </div>
   <div class="metrics-grid" id="metricsGrid"></div>
 </div>
 
-<!-- Legend & Adapter Controls -->
-<div class="bottom-bar">
-  <div class="legend" id="legendBar"></div>
-  <div class="adapter-toggles" id="adapterToggles"></div>
-</div>
+<!-- Legend -->
+<div class="bottom-bar" id="legendBar"></div>
 
 <!-- Footer -->
 <footer class="footer">
   llm-d &mdash; Distributed LLM Inference on Kubernetes &middot; CNCF Sandbox Project &middot;
-  <a href="blog/index.html">Read the blog post &rarr;</a>
+  <a href="blog/index.html">Read the deep dive &rarr;</a>
 </footer>
 
 <!-- Info Overlay -->
@@ -958,12 +887,12 @@ input[type="range"]::-moz-range-thumb {
     <h3>How llm-d Cache-Aware LoRA Routing Works</h3>
     <p><strong>The Problem:</strong> In multi-tenant LLM serving, different users need different LoRA adapters (fine-tuned model layers). Loading a new adapter onto a GPU pod takes 500-2000ms and blocks the pod during the swap. Naive round-robin routing ignores which adapters are already loaded, causing excessive and unnecessary swaps.</p>
     <p><strong>The Solution:</strong> llm-d's Endpoint Picker (EPP) scores each candidate pod using multiple signals before routing:</p>
-    <p><strong>Adapter Affinity (50%)</strong> &mdash; Does this pod already have the requested adapter loaded? This is the highest-weight signal. Routing to a pod that already has the adapter avoids swap overhead entirely.</p>
-    <p><strong>KV Cache Match (20%)</strong> &mdash; Does this pod have relevant cached key-value pairs from prior requests with this adapter? Reusing KV cache reduces time-to-first-token for similar prompts.</p>
-    <p><strong>Load / Queue Depth (15%)</strong> &mdash; How busy is this pod? The EPP avoids overloading pods that are already saturated, balancing throughput across the cluster.</p>
+    <p><strong>Adapter Affinity (50%)</strong> &mdash; Does this pod already have the requested adapter loaded? Routing to a pod that already has the adapter avoids swap overhead entirely.</p>
+    <p><strong>KV Cache Match (20%)</strong> &mdash; Does this pod have relevant cached key-value pairs from prior requests? Reusing KV cache reduces time-to-first-token.</p>
+    <p><strong>Load / Queue Depth (15%)</strong> &mdash; How busy is this pod? The EPP avoids overloading pods that are already saturated.</p>
     <p><strong>Health / GPU Utilization (15%)</strong> &mdash; What is the pod's current resource availability? Healthier pods with more headroom are preferred.</p>
-    <p><strong>Composite Score</strong> &mdash; The EPP combines these weighted signals into a single score, picking the pod that minimizes total latency while maximizing resource reuse.</p>
-    <p>This visualizer runs the <strong>same request stream</strong> through both strategies simultaneously, so you can see the difference in adapter swaps, latency, and throughput in real time. Watch how the smart routing concentrates each adapter type on fewer pods, while round-robin scatters them everywhere.</p>
+    <p><strong>Composite Score</strong> &mdash; The EPP combines these weighted signals: <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent)">adapter_affinity(0.50) x cache_match(0.20) x 1/load(0.15) x gpu_health(0.15)</code> to pick the pod that minimizes total latency while maximizing resource reuse.</p>
+    <p>This visualizer runs the <strong>same request stream</strong> through both strategies simultaneously, so you can see the difference in adapter swaps, latency, and throughput in real time.</p>
     <button class="btn primary close-btn" onclick="toggleInfo()">Got it</button>
   </div>
 </div>
@@ -972,18 +901,35 @@ input[type="range"]::-moz-range-thumb {
 // ================================================================
 // CONFIGURATION
 // ================================================================
-const ADAPTER_DEFS = [
-  { id: 'legal',   name: 'legal-assistant',  color: '#10b981', css: 'legal' },
-  { id: 'code',    name: 'code-reviewer',    color: '#8b5cf6', css: 'code-review' },
-  { id: 'medical', name: 'medical-qa',       color: '#ef4444', css: 'medical' },
-  { id: 'finance', name: 'finance-analyst',  color: '#f59e0b', css: 'finance' },
-  { id: 'support', name: 'customer-support', color: '#06b6d4', css: 'support' },
+const DOMAIN_COLORS = {
+  legal: '#10b981',
+  code: '#8b5cf6',
+  medical: '#ef4444',
+  finance: '#f59e0b',
+  support: '#06b6d4',
+};
+
+const DOMAIN_NAMES = {
+  legal: 'Legal',
+  code: 'Code Review',
+  medical: 'Medical',
+  finance: 'Finance',
+  support: 'Support',
+};
+
+let ADAPTER_DEFS = [
+  { id: 'legal',   name: 'legal-assistant',   color: '#10b981', domain: 'legal',   sizeMB: 25 },
+  { id: 'code',    name: 'code-reviewer',     color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
+  { id: 'medical', name: 'medical-qa',        color: '#ef4444', domain: 'medical', sizeMB: 20 },
+  { id: 'finance', name: 'finance-analyst',   color: '#f59e0b', domain: 'finance', sizeMB: 28 },
+  { id: 'support', name: 'customer-support',  color: '#06b6d4', domain: 'support', sizeMB: 18 },
 ];
 
 const BASE_MODEL = 'Llama-3.1-70B';
 const SWAP_LATENCY_MS = 1200;
 const BASE_LATENCY_MS = 120;
 const MAX_QUEUE = 8;
+const HEX_RADIUS = 48;
 
 let NUM_PODS = 6;
 let MAX_ADAPTER_SLOTS = 3;
@@ -993,10 +939,56 @@ let animFrame = null;
 let lastTick = 0;
 let tickAccum = 0;
 const TICK_BASE_MS = 1100;
+let nextAdapterId = 100;
+let currentScenario = 'multi-tenant';
 
 let enabledAdapters = new Set(ADAPTER_DEFS.map(a => a.id));
 let adapterMix = {};
 ADAPTER_DEFS.forEach(a => { adapterMix[a.id] = 20; });
+
+// ================================================================
+// SCENARIO PRESETS
+// ================================================================
+const SCENARIOS = {
+  'multi-tenant': {
+    podCount: 6,
+    adapterSlots: 3,
+    adapters: [
+      { id: 'legal',   name: 'legal-assistant',  color: '#10b981', domain: 'legal',   sizeMB: 25 },
+      { id: 'code',    name: 'code-reviewer',    color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
+      { id: 'medical', name: 'medical-qa',       color: '#ef4444', domain: 'medical', sizeMB: 20 },
+      { id: 'finance', name: 'finance-analyst',  color: '#f59e0b', domain: 'finance', sizeMB: 28 },
+      { id: 'support', name: 'customer-support', color: '#06b6d4', domain: 'support', sizeMB: 18 },
+      { id: 'legal2',  name: 'contract-review',  color: '#10b981', domain: 'legal',   sizeMB: 22 },
+      { id: 'code2',   name: 'security-audit',   color: '#8b5cf6', domain: 'code',    sizeMB: 15 },
+      { id: 'support2',name: 'ticket-classifier',color: '#06b6d4', domain: 'support', sizeMB: 10 },
+    ],
+    mix: { legal: 15, code: 15, medical: 12, finance: 12, support: 10, legal2: 12, code2: 12, support2: 12 },
+  },
+  'domain-expert': {
+    podCount: 4,
+    adapterSlots: 2,
+    adapters: [
+      { id: 'medical-lg', name: 'radiology-expert',   color: '#ef4444', domain: 'medical', sizeMB: 450 },
+      { id: 'legal-lg',   name: 'litigation-expert',  color: '#10b981', domain: 'legal',   sizeMB: 380 },
+      { id: 'finance-lg', name: 'quant-analyst',      color: '#f59e0b', domain: 'finance', sizeMB: 290 },
+    ],
+    mix: { 'medical-lg': 40, 'legal-lg': 35, 'finance-lg': 25 },
+  },
+  'ab-testing': {
+    podCount: 6,
+    adapterSlots: 3,
+    adapters: [
+      { id: 'legal-v1',   name: 'legal-v1',      color: '#10b981', domain: 'legal',   sizeMB: 25 },
+      { id: 'legal-v2',   name: 'legal-v2',      color: '#059669', domain: 'legal',   sizeMB: 28 },
+      { id: 'code-v1',    name: 'code-review-v1', color: '#8b5cf6', domain: 'code',   sizeMB: 30 },
+      { id: 'code-v2',    name: 'code-review-v2', color: '#7c3aed', domain: 'code',   sizeMB: 32 },
+      { id: 'support-v1', name: 'support-v1',     color: '#06b6d4', domain: 'support', sizeMB: 18 },
+      { id: 'support-v2', name: 'support-v2',     color: '#0891b2', domain: 'support', sizeMB: 20 },
+    ],
+    mix: { 'legal-v1': 18, 'legal-v2': 18, 'code-v1': 16, 'code-v2': 16, 'support-v1': 16, 'support-v2': 16 },
+  },
+};
 
 // ================================================================
 // SIMULATION STATE
@@ -1012,10 +1004,14 @@ class SimState {
     this.latencies = [];
     this.startTime = performance.now();
     this.lastScoring = null;
+    this.particles = [];
+    this.swapAnimations = [];
     this.swapSnapshots = [];
     this.latencySnapshots = [];
     this.tputSnapshots = [];
     this.hitSnapshots = [];
+    this.p50Snapshots = [];
+    this.p95Snapshots = [];
   }
 
   initPods(n) {
@@ -1043,6 +1039,10 @@ class SimState {
         active: false,
         activeTimer: 0,
         kvCache: {},
+        adapterRingPhases: {},
+        swappingOut: null,
+        swappingIn: null,
+        swapProgress: 0,
       });
     }
   }
@@ -1050,6 +1050,18 @@ class SimState {
   avgLatency() {
     if (this.latencies.length === 0) return 0;
     return Math.round(this.latencies.reduce((a, b) => a + b, 0) / this.latencies.length);
+  }
+
+  p50Latency() {
+    if (this.latencies.length === 0) return 0;
+    const sorted = [...this.latencies].sort((a, b) => a - b);
+    return Math.round(sorted[Math.floor(sorted.length * 0.5)]);
+  }
+
+  p95Latency() {
+    if (this.latencies.length === 0) return 0;
+    const sorted = [...this.latencies].sort((a, b) => a - b);
+    return Math.round(sorted[Math.floor(sorted.length * 0.95)]);
   }
 
   hitRate() {
@@ -1062,6 +1074,11 @@ class SimState {
     if (elapsed < 0.5) return 0;
     return parseFloat((this.totalRequests / elapsed).toFixed(1));
   }
+
+  swapRate() {
+    if (this.totalRequests === 0) return 0;
+    return Math.round((this.totalSwaps / this.totalRequests) * 100);
+  }
 }
 
 let rrState, smartState;
@@ -1071,13 +1088,519 @@ function initSimStates() {
   smartState = new SimState('smart');
   rrState.initPods(NUM_PODS);
   smartState.initPods(NUM_PODS);
-  // Mirror initial state for fair comparison
   for (let i = 0; i < NUM_PODS; i++) {
     smartState.pods[i].adapters = [...rrState.pods[i].adapters];
     smartState.pods[i].gpuUtil = rrState.pods[i].gpuUtil;
     smartState.pods[i].memUsage = rrState.pods[i].memUsage;
     smartState.pods[i].kvCache = { ...rrState.pods[i].kvCache };
   }
+}
+
+// ================================================================
+// HEXAGONAL GEOMETRY
+// ================================================================
+function hexCorner(cx, cy, r, i) {
+  const angle = (Math.PI / 180) * (60 * i);
+  return { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+}
+
+function drawHex(ctx, cx, cy, r) {
+  ctx.beginPath();
+  for (let i = 0; i < 6; i++) {
+    const p = hexCorner(cx, cy, r, i);
+    if (i === 0) ctx.moveTo(p.x, p.y);
+    else ctx.lineTo(p.x, p.y);
+  }
+  ctx.closePath();
+}
+
+function computePodPositions(canvas, podCount) {
+  const w = canvas.width / devicePixelRatio;
+  const h = canvas.height / devicePixelRatio;
+  const positions = [];
+  const spacing = HEX_RADIUS * 2.4;
+
+  if (podCount <= 4) {
+    const cols = 2;
+    const rows = 2;
+    const startX = w / 2 - (cols - 1) * spacing / 2;
+    const startY = h / 2 - (rows - 1) * spacing / 2 + 20;
+    for (let i = 0; i < podCount; i++) {
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      positions.push({ x: startX + col * spacing, y: startY + row * spacing });
+    }
+  } else if (podCount <= 6) {
+    const topRow = Math.ceil(podCount / 2);
+    const botRow = podCount - topRow;
+    const startY1 = h / 2 - spacing * 0.5 + 20;
+    const startY2 = h / 2 + spacing * 0.5 + 20;
+    for (let i = 0; i < topRow; i++) {
+      const startX = w / 2 - (topRow - 1) * spacing / 2;
+      positions.push({ x: startX + i * spacing, y: startY1 });
+    }
+    for (let i = 0; i < botRow; i++) {
+      const startX = w / 2 - (botRow - 1) * spacing / 2;
+      positions.push({ x: startX + i * spacing, y: startY2 });
+    }
+  } else {
+    const topRow = Math.ceil(podCount / 3);
+    const midRow = Math.ceil((podCount - topRow) / 2);
+    const botRow = podCount - topRow - midRow;
+    const yGap = spacing * 0.9;
+    const startY = h / 2 - yGap + 20;
+    let idx = 0;
+    for (let i = 0; i < topRow && idx < podCount; i++, idx++) {
+      const startX = w / 2 - (topRow - 1) * spacing / 2;
+      positions.push({ x: startX + i * spacing, y: startY });
+    }
+    for (let i = 0; i < midRow && idx < podCount; i++, idx++) {
+      const startX = w / 2 - (midRow - 1) * spacing / 2;
+      positions.push({ x: startX + i * spacing, y: startY + yGap });
+    }
+    for (let i = 0; i < botRow && idx < podCount; i++, idx++) {
+      const startX = w / 2 - (botRow - 1) * spacing / 2;
+      positions.push({ x: startX + i * spacing, y: startY + yGap * 2 });
+    }
+  }
+  return positions;
+}
+
+// ================================================================
+// CANVAS RENDERING
+// ================================================================
+const devicePixelRatio = window.devicePixelRatio || 1;
+let rrPodPositions = [];
+let smartPodPositions = [];
+
+function setupCanvas(canvasId, wrapId) {
+  const canvas = document.getElementById(canvasId);
+  const wrap = document.getElementById(wrapId);
+  const rect = wrap.getBoundingClientRect();
+  canvas.width = rect.width * devicePixelRatio;
+  canvas.height = rect.height * devicePixelRatio;
+  canvas.style.width = rect.width + 'px';
+  canvas.style.height = rect.height + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  return ctx;
+}
+
+function resizeCanvases() {
+  setupCanvas('rrCanvas', 'rrCanvasWrap');
+  setupCanvas('smartCanvas', 'smartCanvasWrap');
+  rrPodPositions = computePodPositions(document.getElementById('rrCanvas'), rrState.pods.length);
+  smartPodPositions = computePodPositions(document.getElementById('smartCanvas'), smartState.pods.length);
+}
+
+function drawIngress(ctx, w) {
+  const cx = w / 2;
+  const cy = 22;
+  ctx.save();
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.35)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  const rw = 100, rh = 18;
+  ctx.beginPath();
+  ctx.roundRect(cx - rw, cy - rh / 2, rw * 2, rh, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(59, 130, 246, 0.6)';
+  ctx.font = '500 9px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('INGRESS', cx, cy);
+  ctx.restore();
+}
+
+function getAdapterDef(adapterId) {
+  return ADAPTER_DEFS.find(a => a.id === adapterId);
+}
+
+function getAdapterColor(adapterId) {
+  const def = getAdapterDef(adapterId);
+  if (def) return def.color;
+  const domain = adapterId.split('-')[0];
+  return DOMAIN_COLORS[domain] || '#3b82f6';
+}
+
+function drawPod(ctx, pod, pos, time) {
+  const cx = pos.x;
+  const cy = pos.y;
+  const r = HEX_RADIUS;
+
+  ctx.save();
+
+  // Glow effect when active
+  if (pod.active) {
+    const gradient = ctx.createRadialGradient(cx, cy, r * 0.5, cx, cy, r * 1.6);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.12)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 1.6, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Loading overlay glow
+  if (pod.loading) {
+    const pulseAlpha = 0.08 + Math.sin(time * 6) * 0.05;
+    const gradient = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 1.4);
+    gradient.addColorStop(0, `rgba(245, 158, 11, ${pulseAlpha + 0.08})`);
+    gradient.addColorStop(1, 'rgba(245, 158, 11, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Adapter rings around hexagon
+  const adapterCount = pod.adapters.length;
+  if (adapterCount > 0) {
+    for (let ai = 0; ai < adapterCount; ai++) {
+      const aid = pod.adapters[ai];
+      const col = getAdapterColor(aid);
+      const ringR = r + 6 + ai * 5;
+      let alpha = 0.7;
+
+      // Swap animation: fading in
+      if (pod.swappingIn === aid && pod.swapProgress < 1) {
+        alpha = pod.swapProgress * 0.7;
+      }
+
+      ctx.strokeStyle = col;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = 3;
+      drawHex(ctx, cx, cy, ringR);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // Swap animation: fading out old adapter
+    if (pod.swappingOut && pod.swapProgress < 1) {
+      const oldCol = getAdapterColor(pod.swappingOut);
+      const ringR = r + 6 + adapterCount * 5;
+      ctx.strokeStyle = oldCol;
+      ctx.globalAlpha = (1 - pod.swapProgress) * 0.7;
+      ctx.lineWidth = 3;
+      ctx.setLineDash([4, 4]);
+      drawHex(ctx, cx, cy, ringR);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // Hexagon fill
+  drawHex(ctx, cx, cy, r);
+  const fillGrad = ctx.createLinearGradient(cx, cy - r, cx, cy + r);
+  fillGrad.addColorStop(0, pod.active ? '#1a2855' : '#151b2e');
+  fillGrad.addColorStop(1, pod.active ? '#131f42' : '#111827');
+  ctx.fillStyle = fillGrad;
+  ctx.fill();
+
+  // Hexagon border
+  drawHex(ctx, cx, cy, r);
+  ctx.strokeStyle = pod.active ? 'rgba(59, 130, 246, 0.6)' : 'rgba(37, 45, 68, 0.8)';
+  ctx.lineWidth = pod.active ? 2 : 1.2;
+  ctx.stroke();
+
+  // Pod name
+  ctx.fillStyle = '#3b82f6';
+  ctx.font = '700 9px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(pod.name, cx, cy - 16);
+
+  // Base model
+  ctx.fillStyle = '#566080';
+  ctx.font = '400 7px "JetBrains Mono", monospace';
+  ctx.fillText(BASE_MODEL, cx, cy - 6);
+
+  // Adapter names inside hex
+  if (adapterCount > 0) {
+    const maxShow = Math.min(adapterCount, 3);
+    for (let ai = 0; ai < maxShow; ai++) {
+      const aid = pod.adapters[ai];
+      const def = getAdapterDef(aid);
+      const name = def ? def.name : aid;
+      const col = getAdapterColor(aid);
+      ctx.fillStyle = col;
+      ctx.font = '600 6.5px "JetBrains Mono", monospace';
+      ctx.fillText(name.length > 14 ? name.slice(0, 13) + '..' : name, cx, cy + 5 + ai * 10);
+    }
+    if (adapterCount > 3) {
+      ctx.fillStyle = '#566080';
+      ctx.font = '600 6px "JetBrains Mono", monospace';
+      ctx.fillText('+' + (adapterCount - 3) + ' more', cx, cy + 5 + 3 * 10);
+    }
+  } else {
+    ctx.fillStyle = '#566080';
+    ctx.font = 'italic 7px Inter, sans-serif';
+    ctx.fillText('no adapters', cx, cy + 5);
+  }
+
+  // GPU utilization bar
+  const barW = r * 1.1;
+  const barH = 3;
+  const barY = cy + r - 14;
+  ctx.fillStyle = 'rgba(255,255,255,0.04)';
+  ctx.beginPath();
+  ctx.roundRect(cx - barW / 2, barY, barW, barH, 1.5);
+  ctx.fill();
+  const gpuFrac = pod.gpuUtil / 100;
+  let gpuColor = '#3b82f6';
+  if (pod.gpuUtil > 85) gpuColor = '#ef4444';
+  else if (pod.gpuUtil > 65) gpuColor = '#f59e0b';
+  ctx.fillStyle = gpuColor;
+  ctx.beginPath();
+  ctx.roundRect(cx - barW / 2, barY, barW * gpuFrac, barH, 1.5);
+  ctx.fill();
+
+  // GPU label
+  ctx.fillStyle = '#566080';
+  ctx.font = '600 6px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('GPU ' + Math.round(pod.gpuUtil) + '%', cx, barY + barH + 8);
+
+  // Queue dots
+  const dotY = cy + r - 3;
+  const dotSpacing = 5;
+  const dotsStartX = cx - (MAX_QUEUE - 1) * dotSpacing / 2;
+  for (let q = 0; q < MAX_QUEUE; q++) {
+    const dx = dotsStartX + q * dotSpacing;
+    ctx.beginPath();
+    ctx.arc(dx, dotY, 1.8, 0, Math.PI * 2);
+    if (q < pod.queueDepth) {
+      if (pod.queueDepth > 6) ctx.fillStyle = '#ef4444';
+      else if (pod.queueDepth > 4) ctx.fillStyle = '#f59e0b';
+      else ctx.fillStyle = '#3b82f6';
+      ctx.globalAlpha = 1;
+    } else {
+      ctx.fillStyle = '#3b82f6';
+      ctx.globalAlpha = 0.15;
+    }
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Swap count badge
+  if (pod.swaps > 0) {
+    const badgeX = cx + r - 8;
+    const badgeY = cy - r + 8;
+    ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+    ctx.beginPath();
+    ctx.arc(badgeX, badgeY, 10, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#f59e0b';
+    ctx.font = '700 7px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(pod.swaps, badgeX, badgeY);
+  }
+
+  // Loading overlay text
+  if (pod.loading) {
+    const pulseAlpha = 0.5 + Math.sin(time * 6) * 0.3;
+    ctx.fillStyle = `rgba(245, 158, 11, ${pulseAlpha})`;
+    ctx.font = '700 7px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('LOADING...', cx, cy - r - 6);
+  }
+
+  ctx.restore();
+}
+
+function drawParticle(ctx, particle, time) {
+  const t = particle.progress;
+  const sx = particle.startX;
+  const sy = particle.startY;
+  const ex = particle.endX;
+  const ey = particle.endY;
+  const cp1x = sx + (ex - sx) * 0.25 + particle.curveBias;
+  const cp1y = sy + (ey - sy) * 0.3;
+  const cp2x = sx + (ex - sx) * 0.75 - particle.curveBias * 0.5;
+  const cp2y = sy + (ey - sy) * 0.7;
+
+  // Bezier position
+  const mt = 1 - t;
+  const px = mt * mt * mt * sx + 3 * mt * mt * t * cp1x + 3 * mt * t * t * cp2x + t * t * t * ex;
+  const py = mt * mt * mt * sy + 3 * mt * mt * t * cp1y + 3 * mt * t * t * cp2y + t * t * t * ey;
+
+  const col = particle.color;
+  const fadeAlpha = t > 0.85 ? (1 - (t - 0.85) / 0.15) : (t < 0.1 ? t / 0.1 : 1);
+
+  ctx.save();
+  ctx.globalAlpha = fadeAlpha;
+
+  // Glow
+  const glow = ctx.createRadialGradient(px, py, 0, px, py, 12);
+  glow.addColorStop(0, col + '60');
+  glow.addColorStop(1, col + '00');
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(px, py, 12, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Core
+  ctx.fillStyle = col;
+  ctx.shadowColor = col;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  ctx.arc(px, py, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+
+  // Trail
+  const trailLen = 5;
+  for (let ti = 1; ti <= trailLen; ti++) {
+    const tt = Math.max(0, t - ti * 0.02);
+    const tmt = 1 - tt;
+    const tx = tmt * tmt * tmt * sx + 3 * tmt * tmt * tt * cp1x + 3 * tmt * tt * tt * cp2x + tt * tt * tt * ex;
+    const ty = tmt * tmt * tmt * sy + 3 * tmt * tmt * tt * cp1y + 3 * tmt * tt * tt * cp2y + tt * tt * tt * ey;
+    ctx.globalAlpha = fadeAlpha * (1 - ti / (trailLen + 1)) * 0.4;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(tx, ty, 3 - ti * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Label
+  ctx.globalAlpha = fadeAlpha * 0.9;
+  ctx.fillStyle = 'rgba(0,0,0,0.75)';
+  const labelText = particle.adapterName;
+  ctx.font = '600 7px "JetBrains Mono", monospace';
+  const tw = ctx.measureText(labelText).width;
+  ctx.beginPath();
+  ctx.roundRect(px - tw / 2 - 3, py - 16, tw + 6, 12, 3);
+  ctx.fill();
+  ctx.fillStyle = col;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(labelText, px, py - 10);
+
+  ctx.restore();
+}
+
+function drawSwapPenalty(ctx, anim, time) {
+  const elapsed = (time - anim.startTime);
+  const duration = 1.5;
+  const progress = Math.min(1, elapsed / duration);
+  if (progress >= 1) return false;
+
+  const alpha = 1 - progress;
+  const yOff = progress * 30;
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#f59e0b';
+  ctx.font = '700 10px "JetBrains Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#f59e0b';
+  ctx.shadowBlur = 6;
+  ctx.fillText(anim.text, anim.x, anim.y - HEX_RADIUS - 15 - yOff);
+  ctx.shadowBlur = 0;
+  ctx.restore();
+  return true;
+}
+
+function renderCanvas(canvasId, wrapId, state, podPositions, time) {
+  const canvas = document.getElementById(canvasId);
+  const wrap = document.getElementById(wrapId);
+  const rect = wrap.getBoundingClientRect();
+  if (canvas.width !== rect.width * devicePixelRatio || canvas.height !== rect.height * devicePixelRatio) {
+    canvas.width = rect.width * devicePixelRatio;
+    canvas.height = rect.height * devicePixelRatio;
+    canvas.style.width = rect.width + 'px';
+    canvas.style.height = rect.height + 'px';
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  const w = rect.width;
+  const h = rect.height;
+
+  // Clear
+  ctx.clearRect(0, 0, w, h);
+
+  // Background subtle grid
+  ctx.strokeStyle = 'rgba(37, 45, 68, 0.15)';
+  ctx.lineWidth = 0.5;
+  const gridSize = 30;
+  for (let gx = 0; gx < w; gx += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, h);
+    ctx.stroke();
+  }
+  for (let gy = 0; gy < h; gy += gridSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, gy);
+    ctx.lineTo(w, gy);
+    ctx.stroke();
+  }
+
+  // Ingress
+  drawIngress(ctx, w);
+
+  // Compute positions if needed
+  if (podPositions.length !== state.pods.length) {
+    const newPos = computePodPositions(canvas, state.pods.length);
+    podPositions.length = 0;
+    newPos.forEach(p => podPositions.push(p));
+  }
+
+  // Draw connection lines from ingress to pods (subtle)
+  const ingressY = 22;
+  ctx.strokeStyle = 'rgba(59, 130, 246, 0.06)';
+  ctx.lineWidth = 1;
+  podPositions.forEach(pos => {
+    ctx.beginPath();
+    ctx.moveTo(w / 2, ingressY + 9);
+    ctx.lineTo(pos.x, pos.y - HEX_RADIUS);
+    ctx.stroke();
+  });
+
+  // Draw pods
+  state.pods.forEach((pod, i) => {
+    if (i < podPositions.length) {
+      drawPod(ctx, pod, podPositions[i], time);
+    }
+  });
+
+  // Draw particles
+  state.particles.forEach(p => {
+    drawParticle(ctx, p, time);
+  });
+
+  // Draw swap penalty animations
+  state.swapAnimations = state.swapAnimations.filter(anim => drawSwapPenalty(ctx, anim, time));
+}
+
+// ================================================================
+// PARTICLE CREATION (CANVAS-BASED)
+// ================================================================
+function createCanvasParticle(state, podIdx, adapter, podPositions, canvasId) {
+  const canvas = document.getElementById(canvasId);
+  const w = canvas.width / devicePixelRatio;
+  if (podIdx >= podPositions.length) return;
+
+  const pos = podPositions[podIdx];
+  const startX = w / 2 + (Math.random() - 0.5) * 80;
+  const startY = 32;
+  const endX = pos.x;
+  const endY = pos.y;
+
+  state.particles.push({
+    startX, startY, endX, endY,
+    progress: 0,
+    speed: 0.015 * simSpeed,
+    color: adapter.color,
+    adapterName: adapter.name,
+    curveBias: (Math.random() - 0.5) * 60,
+  });
 }
 
 // ================================================================
@@ -1109,7 +1632,6 @@ function scorePodsForAdapter(state, adapterId) {
     const kvScore = pod.kvCache[adapterId] || 0;
     const loadScore = Math.max(0, 1.0 - (pod.queueDepth / MAX_QUEUE));
     const gpuScore = Math.max(0, 1.0 - (pod.gpuUtil / 100));
-    // Weighted composite
     const composite = adapterScore * 0.50 + kvScore * 0.20 + loadScore * 0.15 + gpuScore * 0.15;
     return {
       podIdx: idx,
@@ -1126,26 +1648,47 @@ function scorePodsForAdapter(state, adapterId) {
 
 function routeSmart(state, adapterId) {
   const scores = scorePodsForAdapter(state, adapterId);
-  const adapterDef = ADAPTER_DEFS.find(a => a.id === adapterId);
+  const adapterDef = ADAPTER_DEFS.find(a => a.id === adapterId) || { name: adapterId, color: '#3b82f6' };
   state.lastScoring = { adapterId, adapterName: adapterDef.name, adapterColor: adapterDef.color, scores };
   return scores[0].podIdx;
 }
 
-function processRoute(state, podIdx, adapterId) {
+function processRoute(state, podIdx, adapterId, podPositions) {
   const pod = state.pods[podIdx];
   const hadAdapter = pod.adapters.includes(adapterId);
   let latency = BASE_LATENCY_MS + Math.random() * 60;
+  let swapPenalty = 0;
 
   if (!hadAdapter) {
     state.totalSwaps++;
     pod.swaps++;
-    latency += SWAP_LATENCY_MS + Math.random() * 400;
+    swapPenalty = SWAP_LATENCY_MS + Math.random() * 400;
+    latency += swapPenalty;
+
+    // Trigger swap animation
+    let evictedId = null;
     if (pod.adapters.length >= MAX_ADAPTER_SLOTS) {
-      pod.adapters.shift(); // Evict LRU
+      evictedId = pod.adapters.shift();
     }
     pod.adapters.push(adapterId);
+
+    // Set swap animation state
+    pod.swappingOut = evictedId;
+    pod.swappingIn = adapterId;
+    pod.swapProgress = 0;
+
     pod.loading = true;
     pod.loadTimer = Math.ceil(28 / simSpeed);
+
+    // Create floating penalty text
+    if (podIdx < podPositions.length) {
+      state.swapAnimations.push({
+        x: podPositions[podIdx].x,
+        y: podPositions[podIdx].y,
+        text: '+' + Math.round(swapPenalty) + 'ms',
+        startTime: performance.now() / 1000,
+      });
+    }
   } else {
     state.cacheHits++;
     latency -= (pod.kvCache[adapterId] || 0) * 40;
@@ -1161,158 +1704,32 @@ function processRoute(state, podIdx, adapterId) {
   state.totalRequests++;
   latency = Math.max(40, latency);
   state.latencies.push(latency);
-  if (state.latencies.length > 80) state.latencies.shift();
+  if (state.latencies.length > 100) state.latencies.shift();
 
-  return { hadAdapter, latency, podIdx };
+  return { hadAdapter, latency, podIdx, swapPenalty };
 }
 
 // ================================================================
-// PARTICLE ANIMATION
+// EPP SCORING DISPLAY
 // ================================================================
-function animateParticle(panelId, podIdx, adapter) {
-  const panel = document.getElementById(panelId);
-  const sourceId = panelId === 'rrPanel' ? 'rrSource' : 'smartSource';
-  const gridId = panelId === 'rrPanel' ? 'rrGrid' : 'smartGrid';
-  const source = document.getElementById(sourceId);
-  const grid = document.getElementById(gridId);
-  const podCards = grid.querySelectorAll('.pod-card');
-  if (!podCards[podIdx] || !panel) return;
-
-  const panelRect = panel.getBoundingClientRect();
-  const sourceRect = source.getBoundingClientRect();
-  const podRect = podCards[podIdx].getBoundingClientRect();
-
-  const startX = sourceRect.left + sourceRect.width * (0.25 + Math.random() * 0.5) - panelRect.left;
-  const startY = sourceRect.bottom - panelRect.top + panel.scrollTop + 4;
-  const endX = podRect.left + podRect.width / 2 - panelRect.left;
-  const endY = podRect.top + podRect.height * 0.4 - panelRect.top + panel.scrollTop;
-
-  const el = document.createElement('div');
-  el.className = 'request-particle';
-  el.style.background = adapter.color;
-  el.style.left = startX + 'px';
-  el.style.top = startY + 'px';
-  el.style.boxShadow = '0 0 8px ' + adapter.color;
-
-  const glow = document.createElement('span');
-  glow.className = 'particle-glow';
-  glow.style.background = adapter.color;
-  el.appendChild(glow);
-
-  const tag = document.createElement('span');
-  tag.className = 'particle-tag';
-  tag.style.color = adapter.color;
-  tag.textContent = adapter.name;
-  el.appendChild(tag);
-
-  panel.appendChild(el);
-
-  const duration = Math.max(200, 550 / simSpeed);
-  const t0 = performance.now();
-
-  function step(now) {
-    const progress = Math.min(1, (now - t0) / duration);
-    const ease = 1 - Math.pow(1 - progress, 3);
-    const cx = startX + (endX - startX) * ease;
-    // Parabolic arc
-    const arcHeight = Math.abs(endY - startY) * 0.25;
-    const linearY = startY + (endY - startY) * ease;
-    const arc = -4 * arcHeight * progress * (progress - 1);
-    const cy = linearY - arc;
-    el.style.left = cx + 'px';
-    el.style.top = cy + 'px';
-    el.style.opacity = progress > 0.85 ? String(1 - (progress - 0.85) / 0.15) : '1';
-    if (progress < 1) {
-      requestAnimationFrame(step);
-    } else {
-      el.remove();
-    }
-  }
-  requestAnimationFrame(step);
-}
-
-// ================================================================
-// RENDERING
-// ================================================================
-function renderPodGrid(state, gridId) {
-  const grid = document.getElementById(gridId);
-  let html = '';
-  state.pods.forEach((pod) => {
-    const activeClass = pod.active ? ' active' : '';
-    const loadingClass = pod.loading ? ' loading-adapter' : '';
-    const gpuClass = pod.gpuUtil > 85 ? ' critical' : pod.gpuUtil > 65 ? ' high' : '';
-
-    let badges = '';
-    pod.adapters.forEach(aid => {
-      const ad = ADAPTER_DEFS.find(a => a.id === aid);
-      if (ad) {
-        badges += '<span class="adapter-badge ' + ad.css + '">' + ad.name + '</span>';
-      }
-    });
-    if (!badges) {
-      badges = '<span style="font-size:0.55rem;color:var(--text-muted);font-style:italic">no adapters</span>';
-    }
-
-    let queueDots = '';
-    for (let q = 0; q < MAX_QUEUE; q++) {
-      let cls = q < pod.queueDepth ? ' filled' : '';
-      if (q < pod.queueDepth && pod.queueDepth > 6) cls += ' crit';
-      else if (q < pod.queueDepth && pod.queueDepth > 4) cls += ' warn';
-      queueDots += '<span class="queue-dot' + cls + '"></span>';
-    }
-
-    const swapBadge = pod.swaps > 0
-      ? '<div class="pod-swaps">&#x26A0; ' + pod.swaps + '</div>'
-      : '';
-
-    html += '<div class="pod-card' + activeClass + loadingClass + '" data-pod="' + pod.id + '">'
-      + swapBadge
-      + '<div class="pod-name">' + pod.name + '</div>'
-      + '<div class="pod-model">' + BASE_MODEL + '</div>'
-      + '<div class="pod-adapters">' + badges + '</div>'
-      + '<div class="pod-meters">'
-      + '<div class="meter-row"><span class="meter-label">GPU</span>'
-      + '<div class="meter-bar"><div class="meter-fill gpu' + gpuClass + '" style="width:' + pod.gpuUtil + '%"></div></div>'
-      + '<span class="meter-val">' + Math.round(pod.gpuUtil) + '%</span></div>'
-      + '<div class="meter-row"><span class="meter-label">MEM</span>'
-      + '<div class="meter-bar"><div class="meter-fill mem" style="width:' + pod.memUsage + '%"></div></div>'
-      + '<span class="meter-val">' + Math.round(pod.memUsage) + '%</span></div>'
-      + '</div>'
-      + '<div class="pod-queue"><span class="pod-queue-label">Q:</span><div class="queue-dots">' + queueDots + '</div></div>'
-      + '</div>';
-  });
-  grid.innerHTML = html;
-}
-
-function flashPodSwap(gridId, podIdx) {
-  const grid = document.getElementById(gridId);
-  const cards = grid.querySelectorAll('.pod-card');
-  if (cards[podIdx]) {
-    cards[podIdx].classList.add('swap-flash');
-    setTimeout(() => {
-      if (cards[podIdx]) cards[podIdx].classList.remove('swap-flash');
-    }, 800);
-  }
-}
-
 function renderRRScoring(state) {
   const container = document.getElementById('rrScoring');
   if (state.totalRequests === 0) {
-    container.innerHTML = '<p style="font-size:0.65rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p>';
+    container.innerHTML = '<p style="font-size:0.62rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p>';
     return;
   }
   const idx = ((state.rrIndex - 1) % state.pods.length + state.pods.length) % state.pods.length;
   container.innerHTML = '<div class="scoring-info">'
-    + 'Selected <strong style="color:var(--text-primary);font-family:var(--font-mono);font-size:0.65rem">' + state.pods[idx].name + '</strong> (next in rotation, #' + state.rrIndex + ')'
+    + 'Selected <strong style="color:var(--text-primary);font-family:var(--font-mono);font-size:0.62rem">' + state.pods[idx].name + '</strong> (next in rotation, #' + state.rrIndex + ')'
     + '</div>'
-    + '<p style="font-size:0.62rem;color:var(--danger);margin-top:0.3rem;line-height:1.5">'
+    + '<p style="font-size:0.6rem;color:var(--danger);margin-top:0.25rem;line-height:1.5">'
     + 'No adapter affinity, KV cache, or load awareness. Causes unnecessary adapter swaps when the target pod does not have the requested adapter loaded.</p>';
 }
 
 function renderSmartScoring(state) {
   const container = document.getElementById('smartScoring');
   if (!state.lastScoring) {
-    container.innerHTML = '<p style="font-size:0.65rem;color:var(--text-muted)">Waiting for next request...</p>';
+    container.innerHTML = '<p style="font-size:0.62rem;color:var(--text-muted)">Waiting for next request...</p>';
     return;
   }
   const s = state.lastScoring;
@@ -1334,44 +1751,87 @@ function renderSmartScoring(state) {
   });
 
   container.innerHTML = '<div class="scoring-info">'
-    + 'Routing <span class="req-badge" style="background:' + s.adapterColor + '18;color:' + s.adapterColor + ';border:1px solid ' + s.adapterColor + '33">' + s.adapterName + '</span>'
+    + 'Routing <span class="req-badge" style="background:' + s.adapterColor + '18;color:' + s.adapterColor + ';border:1px solid ' + s.adapterColor + '33">' + s.adapterName + '</span> '
+    + '<span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-muted)">adapter_affinity(0.50) x cache_match(0.20) x 1/load(0.15) x gpu_health(0.15)</span>'
+    + '</div>'
+    + '<div class="scoring-info" style="margin-top:0.15rem">'
     + (s.scores[0].hasAdapter
-      ? ' <span style="color:var(--success);font-size:0.6rem;font-weight:700">CACHE HIT</span>'
-      : ' <span style="color:var(--warning);font-size:0.6rem;font-weight:700">SWAP REQUIRED</span>')
+      ? '<span style="color:var(--success);font-size:0.58rem;font-weight:700">CACHE HIT</span> '
+      : '<span style="color:var(--warning);font-size:0.58rem;font-weight:700">SWAP REQUIRED</span> ')
+    + 'Winner: <strong style="color:var(--success);font-family:var(--font-mono);font-size:0.62rem">' + s.scores[0].podName + '</strong> (score: ' + s.scores[0].composite.toFixed(3) + ')'
     + '</div>'
     + '<table class="score-table">'
     + '<thead><tr><th>Pod</th><th>Adapter</th><th>KV$</th><th>Load</th><th>GPU</th><th>Score</th><th></th></tr></thead>'
     + '<tbody>' + rows + '</tbody></table>';
 }
 
-function renderMetrics() {
-  const container = document.getElementById('metricsGrid');
-  const rrLat = rrState.avgLatency();
-  const smartLat = smartState.avgLatency();
-  const rrHit = rrState.hitRate();
-  const smartHit = smartState.hitRate();
-  const rrTput = rrState.throughput();
-  const smartTput = smartState.throughput();
+// ================================================================
+// SPARKLINE METRICS
+// ================================================================
+function drawSparkline(canvasEl, rrData, smartData) {
+  const rect = canvasEl.getBoundingClientRect();
+  if (rect.width === 0) return;
+  canvasEl.width = rect.width * devicePixelRatio;
+  canvasEl.height = rect.height * devicePixelRatio;
+  const ctx = canvasEl.getContext('2d');
+  ctx.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0);
+  const w = rect.width;
+  const h = rect.height;
 
-  // Record snapshots for sparklines
-  const maxSnap = 35;
-  rrState.swapSnapshots.push(rrState.totalSwaps);
-  smartState.swapSnapshots.push(smartState.totalSwaps);
-  rrState.latencySnapshots.push(rrLat);
-  smartState.latencySnapshots.push(smartLat);
-  rrState.tputSnapshots.push(rrTput);
-  smartState.tputSnapshots.push(smartTput);
-  rrState.hitSnapshots.push(rrHit);
-  smartState.hitSnapshots.push(smartHit);
+  const maxLen = Math.max(rrData.length, smartData.length, 2);
+  const allVals = [...rrData, ...smartData];
+  const maxVal = Math.max(1, ...allVals);
+
+  function drawLine(data, color, alpha) {
+    if (data.length < 2) return;
+    ctx.strokeStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    for (let i = 0; i < data.length; i++) {
+      const x = (i / (maxLen - 1)) * w;
+      const y = h - (data[i] / maxVal) * (h - 4) - 2;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+
+    // Fill area under line
+    ctx.globalAlpha = alpha * 0.15;
+    ctx.lineTo((data.length - 1) / (maxLen - 1) * w, h);
+    ctx.lineTo(0, h);
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  ctx.clearRect(0, 0, w, h);
+  drawLine(rrData, '#ef4444', 0.7);
+  drawLine(smartData, '#10b981', 0.9);
+}
+
+function renderMetrics() {
+  const maxSnap = 50;
+
+  // Record snapshots
+  rrState.swapSnapshots.push(rrState.swapRate());
+  smartState.swapSnapshots.push(smartState.swapRate());
+  rrState.hitSnapshots.push(rrState.hitRate());
+  smartState.hitSnapshots.push(smartState.hitRate());
+  rrState.p50Snapshots.push(rrState.p50Latency());
+  smartState.p50Snapshots.push(smartState.p50Latency());
+  rrState.p95Snapshots.push(rrState.p95Latency());
+  smartState.p95Snapshots.push(smartState.p95Latency());
+
   [rrState, smartState].forEach(s => {
-    ['swapSnapshots','latencySnapshots','tputSnapshots','hitSnapshots'].forEach(k => {
+    ['swapSnapshots', 'hitSnapshots', 'p50Snapshots', 'p95Snapshots'].forEach(k => {
       if (s[k].length > maxSnap) s[k] = s[k].slice(-maxSnap);
     });
   });
 
   function colorClass(rrVal, smartVal, lowerBetter) {
     if (rrState.totalRequests < 4) return ['rr', 'smart'];
-    const rrC = 'rr';
     let sC = 'smart';
     if (lowerBetter) {
       if (smartVal < rrVal * 0.9) sC = 'better';
@@ -1380,51 +1840,61 @@ function renderMetrics() {
       if (smartVal > rrVal * 1.1) sC = 'better';
       else if (smartVal < rrVal * 0.9) sC = 'worse';
     }
-    return [rrC, sC];
+    return ['rr', sC];
   }
 
-  const [swC1, swC2] = colorClass(rrState.totalSwaps, smartState.totalSwaps, true);
-  const [laC1, laC2] = colorClass(rrLat, smartLat, true);
-  const [tpC1, tpC2] = colorClass(rrTput, smartTput, false);
-  const [hiC1, hiC2] = colorClass(rrHit, smartHit, false);
+  const rrSwapRate = rrState.swapRate();
+  const smartSwapRate = smartState.swapRate();
+  const rrHitRate = rrState.hitRate();
+  const smartHitRate = smartState.hitRate();
+  const rrP50 = rrState.p50Latency();
+  const smartP50 = smartState.p50Latency();
+  const rrP95 = rrState.p95Latency();
+  const smartP95 = smartState.p95Latency();
 
-  function sparkHtml(rrArr, smartArr, id) {
-    const max = Math.max(1, ...rrArr, ...smartArr);
-    let bars = '';
-    const len = Math.max(rrArr.length, smartArr.length);
-    for (let i = 0; i < len; i++) {
-      const rrH = rrArr[i] !== undefined ? Math.max(1, rrArr[i] / max * 24) : 1;
-      const smH = smartArr[i] !== undefined ? Math.max(1, smartArr[i] / max * 24) : 1;
-      bars += '<div class="spark-col">'
-        + '<div class="spark-bar rr" style="height:' + rrH + 'px"></div>'
-        + '<div class="spark-bar smart" style="height:' + smH + 'px"></div>'
-        + '</div>';
-    }
-    return '<div class="sparkline-row" id="' + id + '">' + bars + '</div>';
-  }
+  const [swC1, swC2] = colorClass(rrSwapRate, smartSwapRate, true);
+  const [hiC1, hiC2] = colorClass(rrHitRate, smartHitRate, false);
+  const [p50C1, p50C2] = colorClass(rrP50, smartP50, true);
+  const [p95C1, p95C2] = colorClass(rrP95, smartP95, true);
 
-  function metricCard(label, unit, rrVal, smartVal, rrClass, smartClass, sparkId, rrSnap, smartSnap) {
+  const container = document.getElementById('metricsGrid');
+
+  function metricCard(label, unit, rrVal, smartVal, rrClass, smartClass, sparkId) {
     return '<div class="metric-card">'
-      + '<div class="metric-label">' + label + (unit ? ' <span class="metric-unit">' + unit + '</span>' : '') + '</div>'
+      + '<div class="metric-label">' + label + '</div>'
       + '<div class="metric-values">'
-      + '<div class="metric-col"><div class="metric-col-label rr">Round-Robin</div><div class="metric-value ' + rrClass + '">' + rrVal + '</div></div>'
-      + '<div class="metric-col"><div class="metric-col-label smart">Smart (EPP)</div><div class="metric-value ' + smartClass + '">' + smartVal + '</div></div>'
+      + '<div class="metric-col"><div class="metric-col-label rr">RR</div><div class="metric-value ' + rrClass + '">' + rrVal + '<span class="metric-unit">' + unit + '</span></div></div>'
+      + '<div class="metric-col"><div class="metric-col-label smart">EPP</div><div class="metric-value ' + smartClass + '">' + smartVal + '<span class="metric-unit">' + unit + '</span></div></div>'
       + '</div>'
-      + sparkHtml(rrSnap, smartSnap, sparkId)
+      + '<canvas class="sparkline-canvas" id="' + sparkId + '"></canvas>'
       + '</div>';
   }
 
   container.innerHTML =
-    metricCard('Adapter Swaps', '', rrState.totalSwaps, smartState.totalSwaps, swC1, swC2, 'sparkSwaps', rrState.swapSnapshots, smartState.swapSnapshots)
-    + metricCard('Avg Latency', 'ms', rrLat, smartLat, laC1, laC2, 'sparkLat', rrState.latencySnapshots, smartState.latencySnapshots)
-    + metricCard('Throughput', 'req/s', rrTput, smartTput, tpC1, tpC2, 'sparkTput', rrState.tputSnapshots, smartState.tputSnapshots)
-    + metricCard('Cache Hit Rate', '%', rrHit, smartHit, hiC1, hiC2, 'sparkHit', rrState.hitSnapshots, smartState.hitSnapshots);
+    metricCard('Swap Rate', '%', rrSwapRate, smartSwapRate, swC1, swC2, 'sparkSwap')
+    + metricCard('Cache Hit Rate', '%', rrHitRate, smartHitRate, hiC1, hiC2, 'sparkHit')
+    + metricCard('P50 Latency', 'ms', rrP50, smartP50, p50C1, p50C2, 'sparkP50')
+    + metricCard('P95 Latency', 'ms', rrP95, smartP95, p95C1, p95C2, 'sparkP95');
+
+  // Draw sparklines after DOM update
+  requestAnimationFrame(() => {
+    const sparkSwap = document.getElementById('sparkSwap');
+    const sparkHit = document.getElementById('sparkHit');
+    const sparkP50 = document.getElementById('sparkP50');
+    const sparkP95 = document.getElementById('sparkP95');
+    if (sparkSwap) drawSparkline(sparkSwap, rrState.swapSnapshots, smartState.swapSnapshots);
+    if (sparkHit) drawSparkline(sparkHit, rrState.hitSnapshots, smartState.hitSnapshots);
+    if (sparkP50) drawSparkline(sparkP50, rrState.p50Snapshots, smartState.p50Snapshots);
+    if (sparkP95) drawSparkline(sparkP95, rrState.p95Snapshots, smartState.p95Snapshots);
+  });
 
   // Update header stats
   document.getElementById('rr-swaps-hdr').textContent = rrState.totalSwaps;
-  document.getElementById('rr-reqs-hdr').textContent = rrState.totalRequests;
+  document.getElementById('rr-lat-hdr').textContent = rrState.avgLatency();
+  document.getElementById('rr-tput-hdr').textContent = rrState.throughput();
   document.getElementById('smart-swaps-hdr').textContent = smartState.totalSwaps;
-  document.getElementById('smart-reqs-hdr').textContent = smartState.totalRequests;
+  document.getElementById('smart-lat-hdr').textContent = smartState.avgLatency();
+  document.getElementById('smart-tput-hdr').textContent = smartState.throughput();
 }
 
 // ================================================================
@@ -1438,7 +1908,15 @@ function tick() {
       pod.memUsage = Math.max(24, pod.memUsage - 0.25 - Math.random() * 0.2);
       pod.queueDepth = Math.max(0, pod.queueDepth - (Math.random() < 0.35 ? 1 : 0));
       if (pod.activeTimer > 0) { pod.activeTimer--; if (pod.activeTimer <= 0) pod.active = false; }
-      if (pod.loadTimer > 0) { pod.loadTimer--; if (pod.loadTimer <= 0) pod.loading = false; }
+      if (pod.loadTimer > 0) { pod.loadTimer--; if (pod.loadTimer <= 0) { pod.loading = false; } }
+      // Progress swap animation
+      if (pod.swapProgress < 1 && (pod.swappingIn || pod.swappingOut)) {
+        pod.swapProgress = Math.min(1, pod.swapProgress + 0.08 * simSpeed);
+        if (pod.swapProgress >= 1) {
+          pod.swappingIn = null;
+          pod.swappingOut = null;
+        }
+      }
       Object.keys(pod.kvCache).forEach(k => {
         pod.kvCache[k] = Math.max(0, pod.kvCache[k] - 0.012);
       });
@@ -1450,47 +1928,54 @@ function tick() {
 
   // Route through both strategies
   const rrPodIdx = routeRoundRobin(rrState);
-  const rrResult = processRoute(rrState, rrPodIdx, adapter.id);
+  const rrResult = processRoute(rrState, rrPodIdx, adapter.id, rrPodPositions);
 
   const smartPodIdx = routeSmart(smartState, adapter.id);
-  const smartResult = processRoute(smartState, smartPodIdx, adapter.id);
+  const smartResult = processRoute(smartState, smartPodIdx, adapter.id, smartPodPositions);
 
-  // Animate particles
-  animateParticle('rrPanel', rrPodIdx, adapter);
-  animateParticle('smartPanel', smartPodIdx, adapter);
+  // Create canvas particles
+  createCanvasParticle(rrState, rrPodIdx, adapter, rrPodPositions, 'rrCanvas');
+  createCanvasParticle(smartState, smartPodIdx, adapter, smartPodPositions, 'smartCanvas');
 
-  // Flash on swaps
-  if (!rrResult.hadAdapter) {
-    setTimeout(() => flashPodSwap('rrGrid', rrPodIdx), Math.max(100, 350 / simSpeed));
-  }
-  if (!smartResult.hadAdapter) {
-    setTimeout(() => flashPodSwap('smartGrid', smartPodIdx), Math.max(100, 350 / simSpeed));
-  }
-
-  // Render
-  renderPodGrid(rrState, 'rrGrid');
-  renderPodGrid(smartState, 'smartGrid');
+  // Update scoring display
   renderRRScoring(rrState);
   renderSmartScoring(smartState);
   renderMetrics();
 }
 
 // ================================================================
-// GAME LOOP
+// RENDER LOOP
 // ================================================================
-function gameLoop(ts) {
-  animFrame = requestAnimationFrame(gameLoop);
-  if (paused) { lastTick = ts; return; }
-  if (!lastTick) lastTick = ts;
-  const dt = ts - lastTick;
-  lastTick = ts;
-  tickAccum += dt;
-  const interval = TICK_BASE_MS / simSpeed;
-  if (tickAccum >= interval) {
-    tickAccum -= interval;
-    if (tickAccum > interval) tickAccum = 0;
-    tick();
+function renderLoop(ts) {
+  animFrame = requestAnimationFrame(renderLoop);
+  const time = ts / 1000;
+
+  if (!paused) {
+    if (!lastTick) lastTick = ts;
+    const dt = ts - lastTick;
+    lastTick = ts;
+    tickAccum += dt;
+    const interval = TICK_BASE_MS / simSpeed;
+    if (tickAccum >= interval) {
+      tickAccum -= interval;
+      if (tickAccum > interval) tickAccum = 0;
+      tick();
+    }
+  } else {
+    lastTick = ts;
   }
+
+  // Update particle progress
+  [rrState, smartState].forEach(state => {
+    state.particles.forEach(p => {
+      p.progress += p.speed;
+    });
+    state.particles = state.particles.filter(p => p.progress < 1);
+  });
+
+  // Render canvases
+  renderCanvas('rrCanvas', 'rrCanvasWrap', rrState, rrPodPositions, time);
+  renderCanvas('smartCanvas', 'smartCanvasWrap', smartState, smartPodPositions, time);
 }
 
 // ================================================================
@@ -1510,25 +1995,16 @@ function updateSpeed(val) {
   document.getElementById('speedDisplay').textContent = val + 'x';
 }
 
-function changePodCount(n) {
-  NUM_PODS = n;
-  resetSimulation();
-}
-
-function changeAdapterSlots(n) {
-  MAX_ADAPTER_SLOTS = n;
-  resetSimulation();
-}
-
 function resetSimulation() {
   tickAccum = 0;
   lastTick = 0;
   initSimStates();
-  renderPodGrid(rrState, 'rrGrid');
-  renderPodGrid(smartState, 'smartGrid');
-  document.getElementById('rrScoring').innerHTML = '<p style="font-size:0.65rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p>';
-  document.getElementById('smartScoring').innerHTML = '<p style="font-size:0.65rem;color:var(--text-muted)">Waiting for next request...</p>';
+  rrPodPositions = computePodPositions(document.getElementById('rrCanvas'), rrState.pods.length);
+  smartPodPositions = computePodPositions(document.getElementById('smartCanvas'), smartState.pods.length);
+  document.getElementById('rrScoring').innerHTML = '<p style="font-size:0.62rem;color:var(--text-muted)">No scoring. Picks next pod in rotation regardless of loaded adapters.</p>';
+  document.getElementById('smartScoring').innerHTML = '<p style="font-size:0.62rem;color:var(--text-muted)">Waiting for next request...</p>';
   renderMetrics();
+  renderAdapterManager();
 }
 
 function toggleInfo() {
@@ -1540,15 +2016,166 @@ function toggleMixPanel() {
   document.getElementById('btnMix').classList.toggle('active');
 }
 
+function toggleAdapterManager() {
+  document.getElementById('adapterManager').classList.toggle('open');
+  document.getElementById('btnAdapterMgr').classList.toggle('active');
+}
+
+// ================================================================
+// SCENARIO BUILDER
+// ================================================================
+function applyScenario(scenarioId, btn) {
+  currentScenario = scenarioId;
+  const scenario = SCENARIOS[scenarioId];
+  if (!scenario) return;
+
+  // Update active button
+  document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+
+  // Apply configuration
+  NUM_PODS = scenario.podCount;
+  MAX_ADAPTER_SLOTS = scenario.adapterSlots;
+  ADAPTER_DEFS = [...scenario.adapters];
+
+  enabledAdapters = new Set(ADAPTER_DEFS.map(a => a.id));
+  adapterMix = {};
+  if (scenario.mix) {
+    Object.keys(scenario.mix).forEach(k => { adapterMix[k] = scenario.mix[k]; });
+  } else {
+    ADAPTER_DEFS.forEach(a => { adapterMix[a.id] = Math.round(100 / ADAPTER_DEFS.length); });
+  }
+
+  buildMixSliders();
+  buildLegend();
+  renderAdapterManager();
+  resetSimulation();
+}
+
+// ================================================================
+// ADAPTER MANAGER
+// ================================================================
+function createAdapter() {
+  const nameInput = document.getElementById('amName');
+  const sizeInput = document.getElementById('amSize');
+  const domainSelect = document.getElementById('amDomain');
+
+  let name = nameInput.value.trim();
+  if (!name) {
+    name = domainSelect.value + '-adapter-' + nextAdapterId;
+  }
+
+  const id = name.replace(/[^a-z0-9-]/gi, '-').toLowerCase();
+  if (ADAPTER_DEFS.find(a => a.id === id)) {
+    nameInput.style.borderColor = '#ef4444';
+    setTimeout(() => { nameInput.style.borderColor = ''; }, 1000);
+    return;
+  }
+
+  const domain = domainSelect.value;
+  const sizeMB = parseInt(sizeInput.value) || 50;
+  const color = DOMAIN_COLORS[domain] || '#3b82f6';
+
+  const newAdapter = { id, name, color, domain, sizeMB };
+  ADAPTER_DEFS.push(newAdapter);
+  enabledAdapters.add(id);
+  adapterMix[id] = 15;
+
+  nextAdapterId++;
+  nameInput.value = '';
+  sizeInput.value = '50';
+
+  buildMixSliders();
+  buildLegend();
+  renderAdapterManager();
+}
+
+function deleteAdapter(id) {
+  if (ADAPTER_DEFS.length <= 2) return;
+
+  ADAPTER_DEFS = ADAPTER_DEFS.filter(a => a.id !== id);
+  enabledAdapters.delete(id);
+  delete adapterMix[id];
+
+  // Remove from all pods
+  [rrState, smartState].forEach(state => {
+    state.pods.forEach(pod => {
+      pod.adapters = pod.adapters.filter(a => a !== id);
+      delete pod.kvCache[id];
+    });
+  });
+
+  buildMixSliders();
+  buildLegend();
+  renderAdapterManager();
+}
+
+function togglePodAdapter(podIdx, adapterId) {
+  [rrState, smartState].forEach(state => {
+    const pod = state.pods[podIdx];
+    if (pod.adapters.includes(adapterId)) {
+      if (pod.adapters.length > 0) {
+        pod.adapters = pod.adapters.filter(a => a !== adapterId);
+      }
+    } else {
+      if (pod.adapters.length < MAX_ADAPTER_SLOTS) {
+        pod.adapters.push(adapterId);
+      }
+    }
+  });
+  renderAdapterManager();
+}
+
+function renderAdapterManager() {
+  // Adapter list
+  const listEl = document.getElementById('amAdapterList');
+  let listHtml = '';
+  ADAPTER_DEFS.forEach(ad => {
+    const bgColor = ad.color + '18';
+    const borderColor = ad.color + '44';
+    listHtml += '<div class="am-adapter-item" style="background:' + bgColor + ';color:' + ad.color + ';border-color:' + borderColor + '">'
+      + ad.name
+      + ' <span class="am-size">' + (ad.sizeMB || '?') + 'MB</span>'
+      + ' <span class="am-del" onclick="deleteAdapter(\'' + ad.id + '\')" title="Remove adapter">x</span>'
+      + '</div>';
+  });
+  listEl.innerHTML = listHtml;
+
+  // Pod assignments
+  const assignEl = document.getElementById('amPodAssignments');
+  let assignHtml = '';
+  const pods = rrState.pods;
+  pods.forEach((pod, pi) => {
+    assignHtml += '<div class="am-pod-row">';
+    assignHtml += '<span class="am-pod-name">' + pod.name + '</span>';
+    assignHtml += '<div class="am-pod-adapters">';
+    ADAPTER_DEFS.forEach(ad => {
+      const isActive = pod.adapters.includes(ad.id);
+      const bgColor = isActive ? ad.color + '22' : 'transparent';
+      const borderColor = isActive ? ad.color + '66' : ad.color + '22';
+      assignHtml += '<span class="am-pod-adapter-badge ' + (isActive ? 'active' : 'inactive') + '"'
+        + ' style="background:' + bgColor + ';color:' + ad.color + ';border-color:' + borderColor + '"'
+        + ' onclick="togglePodAdapter(' + pi + ',\'' + ad.id + '\')"'
+        + '>' + ad.name + '</span>';
+    });
+    assignHtml += '</div></div>';
+  });
+  assignEl.innerHTML = assignHtml;
+}
+
+// ================================================================
+// BUILD UI COMPONENTS
+// ================================================================
 function buildMixSliders() {
   const container = document.getElementById('mixPanel');
-  let html = '<span style="font-size:0.65rem;color:var(--text-muted);font-weight:600;white-space:nowrap;text-transform:uppercase;letter-spacing:0.04em">Request Mix:</span>';
+  let html = '<span style="font-size:0.62rem;color:var(--text-muted);font-weight:600;white-space:nowrap;text-transform:uppercase;letter-spacing:0.04em">Request Mix:</span>';
   ADAPTER_DEFS.forEach(ad => {
+    const val = adapterMix[ad.id] || 15;
     html += '<div class="mix-group">'
       + '<label style="color:' + ad.color + '">' + ad.name + '</label>'
-      + '<input type="range" min="0" max="100" value="' + (adapterMix[ad.id] || 20)
+      + '<input type="range" min="0" max="100" value="' + val
       + '" oninput="adapterMix[\'' + ad.id + '\']=parseInt(this.value);document.getElementById(\'mixV-' + ad.id + '\').textContent=this.value+\'%\'">'
-      + '<span class="mix-val" id="mixV-' + ad.id + '">' + (adapterMix[ad.id] || 20) + '%</span>'
+      + '<span class="mix-val" id="mixV-' + ad.id + '">' + val + '%</span>'
       + '</div>';
   });
   container.innerHTML = html;
@@ -1556,40 +2183,27 @@ function buildMixSliders() {
 
 function buildLegend() {
   const container = document.getElementById('legendBar');
-  let html = '<span class="legend-title">Adapters:</span>';
+  let html = '<div class="legend"><span class="legend-title">Adapters:</span>';
   ADAPTER_DEFS.forEach(ad => {
-    html += '<span class="legend-item"><span class="legend-dot" style="background:' + ad.color + '"></span> ' + ad.name + '</span>';
+    html += '<span class="legend-item"><span class="legend-dot" style="background:' + ad.color + '"></span> ' + ad.name;
+    if (ad.sizeMB) html += ' <span style="font-family:var(--font-mono);font-size:0.55rem;color:var(--text-muted)">' + ad.sizeMB + 'MB</span>';
+    html += '</span>';
   });
+  html += '</div>';
   container.innerHTML = html;
 }
 
-function buildAdapterToggles() {
-  const container = document.getElementById('adapterToggles');
-  let html = '<span style="font-size:0.62rem;color:var(--text-muted);font-weight:600">Toggle:</span>';
-  ADAPTER_DEFS.forEach(ad => {
-    const on = enabledAdapters.has(ad.id);
-    html += '<button class="adapter-toggle ' + (on ? 'enabled' : 'disabled')
-      + '" style="color:' + ad.color + ';border-color:' + (on ? ad.color : 'var(--border)') + '"'
-      + ' onclick="toggleAdapter(\'' + ad.id + '\', this)">' + ad.name + '</button>';
-  });
-  container.innerHTML = html;
-}
-
-function toggleAdapter(id, btn) {
-  if (enabledAdapters.has(id)) {
-    if (enabledAdapters.size <= 2) return; // keep at least 2
-    enabledAdapters.delete(id);
-    btn.classList.remove('enabled');
-    btn.classList.add('disabled');
-    btn.style.borderColor = 'var(--border)';
-  } else {
-    enabledAdapters.add(id);
-    btn.classList.remove('disabled');
-    btn.classList.add('enabled');
-    const ad = ADAPTER_DEFS.find(a => a.id === id);
-    btn.style.borderColor = ad.color;
-  }
-}
+// ================================================================
+// WINDOW RESIZE
+// ================================================================
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    rrPodPositions = computePodPositions(document.getElementById('rrCanvas'), rrState.pods.length);
+    smartPodPositions = computePodPositions(document.getElementById('smartCanvas'), smartState.pods.length);
+  }, 100);
+});
 
 // ================================================================
 // INIT
@@ -1598,11 +2212,14 @@ function init() {
   initSimStates();
   buildMixSliders();
   buildLegend();
-  buildAdapterToggles();
-  renderPodGrid(rrState, 'rrGrid');
-  renderPodGrid(smartState, 'smartGrid');
+  renderAdapterManager();
   renderMetrics();
-  animFrame = requestAnimationFrame(gameLoop);
+
+  // Setup canvases
+  requestAnimationFrame(() => {
+    resizeCanvases();
+    animFrame = requestAnimationFrame(renderLoop);
+  });
 }
 
 init();
