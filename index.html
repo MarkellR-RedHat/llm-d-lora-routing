@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LoRA Adapter Routing Visualizer | llm-d</title>
+<title>LoRA Adapter Routing | llm-d</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -420,6 +420,7 @@ input[type="text"]:focus, input[type="number"]:focus {
 .canvas-stats {
   display: flex;
   gap: 0.65rem;
+  align-items: center;
 }
 .canvas-stat {
   font-family: var(--font-mono);
@@ -440,6 +441,31 @@ input[type="text"]:focus, input[type="number"]:focus {
   display: block;
   width: 100%;
   height: 100%;
+}
+/* Leading badge for canvas headers */
+.leading-badge {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 700;
+  padding: 0.12rem 0.4rem;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  display: none;
+}
+.leading-badge.visible {
+  display: inline-block;
+}
+.leading-badge.leading-good {
+  background: rgba(16,185,129,0.15);
+  color: var(--success);
+  border: 1px solid rgba(16,185,129,0.3);
+}
+.leading-badge.leading-bad {
+  background: rgba(239,68,68,0.12);
+  color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.25);
 }
 
 /* ==================== EPP SCORING PANEL ==================== */
@@ -524,6 +550,33 @@ input[type="text"]:focus, input[type="number"]:focus {
   transition: width 0.3s;
 }
 .score-bar-fill.best { background: var(--success); }
+
+/* ==================== KEY INSIGHT CALLOUT ==================== */
+.key-insight-callout {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  padding: 1rem 1.25rem;
+  margin: 0;
+}
+.key-insight-callout .callout-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
+}
+.key-insight-callout .callout-body {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  font-weight: 500;
+}
+.key-insight-callout .callout-body strong {
+  color: var(--text-primary);
+}
 
 /* ==================== SPARKLINE METRICS DASHBOARD ==================== */
 .metrics-dashboard {
@@ -628,6 +681,143 @@ input[type="text"]:focus, input[type="number"]:focus {
   display: block;
 }
 
+/* ==================== SAVINGS CALCULATOR ==================== */
+.savings-calculator {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+}
+.savings-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.savings-grid {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+.savings-inputs {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.savings-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.savings-input-row label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 120px;
+}
+.savings-input-row input {
+  width: 80px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-align: right;
+}
+.savings-results {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.savings-result-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+.savings-result-label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.savings-result-value {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+.savings-result-value.rr-val { color: var(--danger); }
+.savings-result-value.epp-val { color: var(--success); }
+.savings-highlight {
+  background: var(--bg-card);
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3rem;
+}
+.savings-big-number {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--success);
+  line-height: 1;
+}
+.savings-big-label {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+}
+.savings-cost {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--success);
+  line-height: 1;
+  margin-top: 0.2rem;
+}
+
+/* ==================== WAR STORY CALLOUT ==================== */
+.war-story-callout {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--warning);
+  padding: 1rem 1.25rem;
+  margin: 0 1.5rem 0 1.5rem;
+}
+.war-story-callout .ws-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--warning);
+  margin-bottom: 0.5rem;
+}
+.war-story-callout .ws-body {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+.war-story-callout .ws-body strong {
+  color: var(--text-primary);
+}
+
 /* ==================== LEGEND & FOOTER ==================== */
 .bottom-bar {
   background: var(--bg-secondary);
@@ -726,6 +916,8 @@ input[type="text"]:focus, input[type="number"]:focus {
 /* ==================== RESPONSIVE ==================== */
 @media (max-width: 1100px) {
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+  .savings-grid { grid-template-columns: 1fr 1fr; }
+  .savings-highlight { grid-column: span 2; }
 }
 @media (max-width: 768px) {
   .canvas-section { grid-template-columns: 1fr; min-height: 360px; }
@@ -734,6 +926,9 @@ input[type="text"]:focus, input[type="number"]:focus {
   .scoring-section:first-child { border-right: none; border-bottom: 1px solid var(--border); }
   .metrics-grid { grid-template-columns: 1fr 1fr; }
   .controls-bar { padding: 0.4rem 1rem; }
+  .savings-grid { grid-template-columns: 1fr; }
+  .savings-highlight { grid-column: span 1; }
+  .war-story-callout { margin: 0 1rem; }
 }
 </style>
 </head>
@@ -752,7 +947,7 @@ input[type="text"]:focus, input[type="number"]:focus {
     </div>
   </div>
   <div class="header-right">
-    <button class="btn" onclick="toggleInfo()">? How it works</button>
+    <button class="btn" onclick="toggleInfo()">How it works</button>
   </div>
 </header>
 
@@ -821,8 +1016,9 @@ input[type="text"]:focus, input[type="number"]:focus {
   <!-- Round Robin Column -->
   <div class="canvas-col">
     <div class="canvas-header mode-rr">
-      <h2><span class="mode-icon"></span> Naive Round-Robin</h2>
+      <h2><span class="mode-icon"></span> Round-Robin <span style="color:var(--text-muted);font-weight:500;font-size:0.7rem">(Watch the chaos)</span></h2>
       <div class="canvas-stats">
+        <span class="leading-badge" id="rr-leading-badge"></span>
         <span class="canvas-stat">Swaps: <span class="val" id="rr-swaps-hdr">0</span></span>
         <span class="canvas-stat">Lat: <span class="val" id="rr-lat-hdr">0</span><span class="metric-unit">ms</span></span>
         <span class="canvas-stat">Tput: <span class="val" id="rr-tput-hdr">0.0</span><span class="metric-unit">r/s</span></span>
@@ -835,8 +1031,9 @@ input[type="text"]:focus, input[type="number"]:focus {
   <!-- Smart Routing Column -->
   <div class="canvas-col">
     <div class="canvas-header mode-smart">
-      <h2><span class="mode-icon"></span> llm-d Smart Routing (EPP)</h2>
+      <h2><span class="mode-icon"></span> llm-d EPP Routing <span style="color:var(--text-muted);font-weight:500;font-size:0.7rem">(Now with brains)</span></h2>
       <div class="canvas-stats">
+        <span class="leading-badge" id="smart-leading-badge"></span>
         <span class="canvas-stat">Swaps: <span class="val" id="smart-swaps-hdr">0</span></span>
         <span class="canvas-stat">Lat: <span class="val" id="smart-lat-hdr">0</span><span class="metric-unit">ms</span></span>
         <span class="canvas-stat">Tput: <span class="val" id="smart-tput-hdr">0.0</span><span class="metric-unit">r/s</span></span>
@@ -846,6 +1043,12 @@ input[type="text"]:focus, input[type="number"]:focus {
       <canvas id="smartCanvas"></canvas>
     </div>
   </div>
+</div>
+
+<!-- Key Insight Callout -->
+<div class="key-insight-callout">
+  <div class="callout-title">The single most important thing</div>
+  <div class="callout-body">Adapter swaps don't just cost the swap itself. They <strong>drain the entire batch pipeline</strong>, blocking every other request on that pod for 200-500ms. One unnecessary swap cascades into dozens of delayed requests. Smart routing doesn't just avoid swaps -- it <strong>prevents the blast radius</strong>.</div>
 </div>
 
 <!-- EPP Scoring Breakdown Panel -->
@@ -872,11 +1075,67 @@ input[type="text"]:focus, input[type="number"]:focus {
   <div class="metrics-grid" id="metricsGrid"></div>
 </div>
 
+<!-- Daily Savings Calculator -->
+<div class="savings-calculator">
+  <div class="savings-title">Daily Savings Calculator</div>
+  <div class="savings-grid">
+    <div class="savings-inputs">
+      <div class="savings-input-row">
+        <label>Requests per day</label>
+        <input type="number" id="savingsReqPerDay" value="50000" min="1000" max="10000000" step="1000" oninput="updateSavingsCalc()">
+      </div>
+      <div class="savings-input-row">
+        <label>Avg swap penalty ms</label>
+        <input type="number" id="savingsSwapPenalty" value="800" min="100" max="5000" step="50" oninput="updateSavingsCalc()">
+      </div>
+      <div class="savings-input-row">
+        <label>GPU-hour cost ($)</label>
+        <input type="number" id="savingsGpuCost" value="2.50" min="0.10" max="50" step="0.10" oninput="updateSavingsCalc()">
+      </div>
+    </div>
+    <div class="savings-results">
+      <div class="savings-result-row">
+        <span class="savings-result-label">RR swap rate (live)</span>
+        <span class="savings-result-value rr-val" id="savingsRrSwapRate">0%</span>
+      </div>
+      <div class="savings-result-row">
+        <span class="savings-result-label">EPP swap rate (live)</span>
+        <span class="savings-result-value epp-val" id="savingsEppSwapRate">0%</span>
+      </div>
+      <div style="border-top:1px solid var(--border);margin:0.2rem 0"></div>
+      <div class="savings-result-row">
+        <span class="savings-result-label">GPU-hours wasted (RR)</span>
+        <span class="savings-result-value rr-val" id="savingsRrGpuHours">0.0</span>
+      </div>
+      <div class="savings-result-row">
+        <span class="savings-result-label">GPU-hours wasted (EPP)</span>
+        <span class="savings-result-value epp-val" id="savingsEppGpuHours">0.0</span>
+      </div>
+    </div>
+    <div class="savings-highlight">
+      <span class="savings-big-label">GPU-hours saved per day</span>
+      <span class="savings-big-number" id="savingsGpuHoursSaved">0.0</span>
+      <span class="savings-big-label">Estimated cost savings</span>
+      <span class="savings-cost" id="savingsCostSaved">$0.00</span>
+      <span class="savings-big-label" style="font-size:0.5rem;margin-top:0.15rem;color:var(--text-muted)">/day</span>
+    </div>
+  </div>
+</div>
+
 <!-- Legend -->
 <div class="bottom-bar" id="legendBar"></div>
 
+<!-- War Story Callout -->
+<div style="background:var(--bg-primary);padding:1rem 0;border-bottom:1px solid var(--border)">
+  <div class="war-story-callout">
+    <div class="ws-title">War Story: The 3 AM Swap Storm</div>
+    <div class="ws-body">A real pattern we see in production: At 3 AM, a batch job kicks off 200 requests for a rarely-used adapter. Round-robin spreads them across all 8 pods. <strong>Every pod starts swapping simultaneously.</strong> While they're draining batches, the steady-state traffic for popular adapters has nowhere to go. Queue depths spike. The autoscaler sees high utilization and does nothing -- the GPUs are busy, just not doing inference. <strong>P95 goes from 200ms to 4 seconds.</strong> The on-call gets paged. The fix? EPP routes all 200 batch requests to 2 pods that already have the adapter cached, while the other 6 keep serving production traffic undisturbed.</div>
+  </div>
+</div>
+
 <!-- Footer -->
 <footer class="footer">
+  Author: Markell Rawls &middot;
   llm-d &mdash; Distributed LLM Inference on Kubernetes &middot; CNCF Sandbox Project &middot;
   <a href="blog/index.html">Read the deep dive &rarr;</a>
 </footer>
@@ -918,11 +1177,11 @@ const DOMAIN_NAMES = {
 };
 
 let ADAPTER_DEFS = [
-  { id: 'legal',   name: 'legal-assistant',   color: '#10b981', domain: 'legal',   sizeMB: 25 },
-  { id: 'code',    name: 'code-reviewer',     color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
-  { id: 'medical', name: 'medical-qa',        color: '#ef4444', domain: 'medical', sizeMB: 20 },
-  { id: 'finance', name: 'finance-analyst',   color: '#f59e0b', domain: 'finance', sizeMB: 28 },
-  { id: 'support', name: 'customer-support',  color: '#06b6d4', domain: 'support', sizeMB: 18 },
+  { id: 'legal',   name: 'legal-assistant-v2',   color: '#10b981', domain: 'legal',   sizeMB: 25 },
+  { id: 'code',    name: 'code-reviewer-xl',     color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
+  { id: 'medical', name: 'medical-qa-hipaa',      color: '#ef4444', domain: 'medical', sizeMB: 20 },
+  { id: 'finance', name: 'finance-analyst-v3',   color: '#f59e0b', domain: 'finance', sizeMB: 28 },
+  { id: 'support', name: 'customer-support-es',  color: '#06b6d4', domain: 'support', sizeMB: 18 },
 ];
 
 const BASE_MODEL = 'Llama-3.1-70B';
@@ -954,14 +1213,14 @@ const SCENARIOS = {
     podCount: 6,
     adapterSlots: 3,
     adapters: [
-      { id: 'legal',   name: 'legal-assistant',  color: '#10b981', domain: 'legal',   sizeMB: 25 },
-      { id: 'code',    name: 'code-reviewer',    color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
-      { id: 'medical', name: 'medical-qa',       color: '#ef4444', domain: 'medical', sizeMB: 20 },
-      { id: 'finance', name: 'finance-analyst',  color: '#f59e0b', domain: 'finance', sizeMB: 28 },
-      { id: 'support', name: 'customer-support', color: '#06b6d4', domain: 'support', sizeMB: 18 },
-      { id: 'legal2',  name: 'contract-review',  color: '#10b981', domain: 'legal',   sizeMB: 22 },
-      { id: 'code2',   name: 'security-audit',   color: '#8b5cf6', domain: 'code',    sizeMB: 15 },
-      { id: 'support2',name: 'ticket-classifier',color: '#06b6d4', domain: 'support', sizeMB: 10 },
+      { id: 'legal',   name: 'legal-assistant-v2',  color: '#10b981', domain: 'legal',   sizeMB: 25 },
+      { id: 'code',    name: 'code-reviewer-xl',    color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
+      { id: 'medical', name: 'medical-qa-hipaa',     color: '#ef4444', domain: 'medical', sizeMB: 20 },
+      { id: 'finance', name: 'finance-analyst-v3',  color: '#f59e0b', domain: 'finance', sizeMB: 28 },
+      { id: 'support', name: 'customer-support-es', color: '#06b6d4', domain: 'support', sizeMB: 18 },
+      { id: 'legal2',  name: 'contract-review-v1',  color: '#10b981', domain: 'legal',   sizeMB: 22 },
+      { id: 'code2',   name: 'security-audit-xl',   color: '#8b5cf6', domain: 'code',    sizeMB: 15 },
+      { id: 'support2',name: 'ticket-triage-v2',    color: '#06b6d4', domain: 'support', sizeMB: 10 },
     ],
     mix: { legal: 15, code: 15, medical: 12, finance: 12, support: 10, legal2: 12, code2: 12, support2: 12 },
   },
@@ -969,9 +1228,9 @@ const SCENARIOS = {
     podCount: 4,
     adapterSlots: 2,
     adapters: [
-      { id: 'medical-lg', name: 'radiology-expert',   color: '#ef4444', domain: 'medical', sizeMB: 450 },
-      { id: 'legal-lg',   name: 'litigation-expert',  color: '#10b981', domain: 'legal',   sizeMB: 380 },
-      { id: 'finance-lg', name: 'quant-analyst',      color: '#f59e0b', domain: 'finance', sizeMB: 290 },
+      { id: 'medical-lg', name: 'radiology-dx-xl',       color: '#ef4444', domain: 'medical', sizeMB: 450 },
+      { id: 'legal-lg',   name: 'litigation-expert-v3',  color: '#10b981', domain: 'legal',   sizeMB: 380 },
+      { id: 'finance-lg', name: 'quant-model-v7',        color: '#f59e0b', domain: 'finance', sizeMB: 290 },
     ],
     mix: { 'medical-lg': 40, 'legal-lg': 35, 'finance-lg': 25 },
   },
@@ -979,12 +1238,12 @@ const SCENARIOS = {
     podCount: 6,
     adapterSlots: 3,
     adapters: [
-      { id: 'legal-v1',   name: 'legal-v1',      color: '#10b981', domain: 'legal',   sizeMB: 25 },
-      { id: 'legal-v2',   name: 'legal-v2',      color: '#059669', domain: 'legal',   sizeMB: 28 },
-      { id: 'code-v1',    name: 'code-review-v1', color: '#8b5cf6', domain: 'code',   sizeMB: 30 },
-      { id: 'code-v2',    name: 'code-review-v2', color: '#7c3aed', domain: 'code',   sizeMB: 32 },
-      { id: 'support-v1', name: 'support-v1',     color: '#06b6d4', domain: 'support', sizeMB: 18 },
-      { id: 'support-v2', name: 'support-v2',     color: '#0891b2', domain: 'support', sizeMB: 20 },
+      { id: 'legal-v1',   name: 'legal-v1.2',          color: '#10b981', domain: 'legal',   sizeMB: 25 },
+      { id: 'legal-v2',   name: 'legal-v2.0-rc',       color: '#059669', domain: 'legal',   sizeMB: 28 },
+      { id: 'code-v1',    name: 'code-review-v3',      color: '#8b5cf6', domain: 'code',    sizeMB: 30 },
+      { id: 'code-v2',    name: 'code-review-v4-beta', color: '#7c3aed', domain: 'code',    sizeMB: 32 },
+      { id: 'support-v1', name: 'support-en-v2',       color: '#06b6d4', domain: 'support', sizeMB: 18 },
+      { id: 'support-v2', name: 'support-es-v2',       color: '#0891b2', domain: 'support', sizeMB: 20 },
     ],
     mix: { 'legal-v1': 18, 'legal-v2': 18, 'code-v1': 16, 'code-v2': 16, 'support-v1': 16, 'support-v2': 16 },
   },
@@ -1811,6 +2070,43 @@ function drawSparkline(canvasEl, rrData, smartData) {
   drawLine(smartData, '#10b981', 0.9);
 }
 
+function updateLeadingBadges() {
+  const rrBadge = document.getElementById('rr-leading-badge');
+  const smartBadge = document.getElementById('smart-leading-badge');
+  if (!rrBadge || !smartBadge) return;
+
+  if (rrState.totalRequests < 6) {
+    rrBadge.classList.remove('visible');
+    smartBadge.classList.remove('visible');
+    return;
+  }
+
+  const rrSwap = rrState.swapRate();
+  const smartSwap = smartState.swapRate();
+  const rrLat = rrState.avgLatency();
+  const smartLat = smartState.avgLatency();
+
+  // Score: lower swap rate and lower latency is better
+  const rrScore = rrSwap + rrLat / 10;
+  const smartScore = smartSwap + smartLat / 10;
+
+  if (smartScore < rrScore * 0.85) {
+    // Smart is clearly winning
+    smartBadge.textContent = 'LEADING';
+    smartBadge.className = 'leading-badge visible leading-good';
+    rrBadge.classList.remove('visible');
+  } else if (rrScore < smartScore * 0.85) {
+    // RR is somehow winning (rare)
+    rrBadge.textContent = 'LEADING';
+    rrBadge.className = 'leading-badge visible leading-good';
+    smartBadge.classList.remove('visible');
+  } else {
+    // Close race
+    rrBadge.classList.remove('visible');
+    smartBadge.classList.remove('visible');
+  }
+}
+
 function renderMetrics() {
   const maxSnap = 50;
 
@@ -1895,6 +2191,37 @@ function renderMetrics() {
   document.getElementById('smart-swaps-hdr').textContent = smartState.totalSwaps;
   document.getElementById('smart-lat-hdr').textContent = smartState.avgLatency();
   document.getElementById('smart-tput-hdr').textContent = smartState.throughput();
+
+  // Update leading badges
+  updateLeadingBadges();
+
+  // Update savings calculator
+  updateSavingsCalc();
+}
+
+// ================================================================
+// SAVINGS CALCULATOR
+// ================================================================
+function updateSavingsCalc() {
+  const reqPerDay = parseInt(document.getElementById('savingsReqPerDay').value) || 50000;
+  const swapPenaltyMs = parseInt(document.getElementById('savingsSwapPenalty').value) || 800;
+  const gpuCost = parseFloat(document.getElementById('savingsGpuCost').value) || 2.50;
+
+  const rrSwapPct = rrState ? rrState.swapRate() / 100 : 0;
+  const eppSwapPct = smartState ? smartState.swapRate() / 100 : 0;
+
+  // GPU-hours wasted = (requests * swap_rate * swap_penalty_ms) / (1000 * 3600)
+  const rrGpuHours = (reqPerDay * rrSwapPct * swapPenaltyMs) / (1000 * 3600);
+  const eppGpuHours = (reqPerDay * eppSwapPct * swapPenaltyMs) / (1000 * 3600);
+  const savedGpuHours = Math.max(0, rrGpuHours - eppGpuHours);
+  const savedCost = savedGpuHours * gpuCost;
+
+  document.getElementById('savingsRrSwapRate').textContent = Math.round(rrSwapPct * 100) + '%';
+  document.getElementById('savingsEppSwapRate').textContent = Math.round(eppSwapPct * 100) + '%';
+  document.getElementById('savingsRrGpuHours').textContent = rrGpuHours.toFixed(1);
+  document.getElementById('savingsEppGpuHours').textContent = eppGpuHours.toFixed(1);
+  document.getElementById('savingsGpuHoursSaved').textContent = savedGpuHours.toFixed(1);
+  document.getElementById('savingsCostSaved').textContent = '$' + savedCost.toFixed(2);
 }
 
 // ================================================================

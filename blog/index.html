@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cache-Aware LoRA Routing in llm-d: Eliminating Adapter Swap Overhead at Scale</title>
-    <meta name="description" content="A deep dive into how llm-d's Endpoint Picker routes requests to pods with the right LoRA adapter already loaded, eliminating costly adapter swaps in multi-tenant LLM serving.">
+    <title>Your LoRA Adapters Are Thrashing Your GPUs | llm-d</title>
+    <meta name="description" content="You have 12 LoRA adapters, 8 GPUs, and a swap rate that's killing your p95. Here's how llm-d's Endpoint Picker fixes multi-tenant adapter routing.">
     <meta name="author" content="Markell Rawls">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -36,9 +36,7 @@
             --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
         }
 
-        html {
-            scroll-behavior: smooth;
-        }
+        html { scroll-behavior: smooth; }
 
         body {
             font-family: var(--font-body);
@@ -50,7 +48,6 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
-        /* Header / Hero */
         .hero {
             background: linear-gradient(135deg, var(--bg-primary) 0%, #0f1729 50%, var(--bg-primary) 100%);
             border-bottom: 1px solid var(--border);
@@ -132,7 +129,7 @@
             color: var(--text-secondary);
             line-height: 1.6;
             margin-bottom: 1.5rem;
-            max-width: 650px;
+            max-width: 700px;
         }
 
         .meta {
@@ -161,66 +158,12 @@
             font-weight: 600;
         }
 
-        /* Main content */
         .content-wrapper {
             max-width: 800px;
             margin: 0 auto;
             padding: 2.5rem 1.5rem 4rem;
         }
 
-        /* Table of Contents */
-        .toc {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem 2rem;
-            margin-bottom: 3rem;
-        }
-
-        .toc-title {
-            font-size: 0.8125rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-muted);
-            margin-bottom: 1rem;
-        }
-
-        .toc ol {
-            list-style: none;
-            counter-reset: toc-counter;
-        }
-
-        .toc ol li {
-            counter-increment: toc-counter;
-            margin-bottom: 0.5rem;
-        }
-
-        .toc ol li a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            font-size: 0.9375rem;
-            font-weight: 500;
-            transition: color 0.2s;
-            display: flex;
-            align-items: baseline;
-            gap: 0.5rem;
-        }
-
-        .toc ol li a::before {
-            content: counter(toc-counter, decimal-leading-zero);
-            color: var(--accent);
-            font-family: var(--font-mono);
-            font-size: 0.8125rem;
-            font-weight: 600;
-            flex-shrink: 0;
-        }
-
-        .toc ol li a:hover {
-            color: var(--accent-light);
-        }
-
-        /* Sections */
         section {
             margin-bottom: 3.5rem;
         }
@@ -282,10 +225,6 @@
             font-weight: 600;
         }
 
-        em {
-            font-style: italic;
-        }
-
         ul, ol {
             margin-bottom: 1.25rem;
             padding-left: 1.25rem;
@@ -300,7 +239,6 @@
             color: var(--text-primary);
         }
 
-        /* Code */
         code {
             font-family: var(--font-mono);
             font-size: 0.875em;
@@ -341,7 +279,6 @@
             letter-spacing: 0.05em;
         }
 
-        /* Callout / pull quote */
         .callout {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.03));
             border-left: 3px solid var(--accent);
@@ -399,7 +336,48 @@
             color: #4ade80;
         }
 
-        /* Diagram boxes */
+        .callout-hero {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.12), rgba(59, 130, 246, 0.04));
+            border-left: 4px solid var(--accent);
+            border-radius: 0 12px 12px 0;
+            padding: 1.75rem 2rem;
+            margin: 2.5rem 0;
+        }
+
+        .callout-hero .callout-label {
+            font-size: 0.8125rem;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .callout-hero p {
+            font-size: 1.0625rem;
+            line-height: 1.7;
+        }
+
+        .war-story {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02));
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-left: 4px solid var(--warning);
+            border-radius: 0 12px 12px 0;
+            padding: 1.75rem 2rem;
+            margin: 2.5rem 0;
+        }
+
+        .war-story-title {
+            font-family: var(--font-mono);
+            font-size: 0.9375rem;
+            font-weight: 700;
+            color: var(--warning);
+            margin-bottom: 1rem;
+        }
+
+        .war-story p {
+            font-size: 0.9375rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
         .diagram {
             background: var(--bg-secondary);
             border: 1px solid var(--border);
@@ -464,7 +442,6 @@
             flex-shrink: 0;
         }
 
-        /* Comparison table */
         .comparison {
             width: 100%;
             border-collapse: collapse;
@@ -509,7 +486,6 @@
             font-weight: 600;
         }
 
-        /* Scoring breakdown */
         .score-visual {
             display: flex;
             flex-direction: column;
@@ -557,7 +533,6 @@
             text-align: right;
         }
 
-        /* CTA Button */
         .cta-section {
             background: linear-gradient(135deg, var(--accent-dim), rgba(59, 130, 246, 0.05));
             border: 1px solid rgba(59, 130, 246, 0.3);
@@ -605,7 +580,6 @@
             height: 18px;
         }
 
-        /* Author card */
         .author-card {
             display: flex;
             gap: 1.25rem;
@@ -646,7 +620,6 @@
             line-height: 1.5;
         }
 
-        /* Footer */
         footer {
             border-top: 1px solid var(--border);
             padding: 2rem 1.5rem;
@@ -667,7 +640,6 @@
             color: var(--accent-light);
         }
 
-        /* Results card grid */
         .results-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -711,65 +683,128 @@
             font-weight: 600;
         }
 
-        /* Responsive */
+        .savings-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2.5rem 0;
+        }
+
+        .savings-title {
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .savings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 1.5rem;
+        }
+
+        .savings-col {
+            text-align: center;
+        }
+
+        .savings-col-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .savings-col-value {
+            font-family: var(--font-mono);
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .savings-col-value.bad { color: #f87171; }
+        .savings-col-value.good { color: #4ade80; }
+        .savings-col-value.saved { color: var(--accent-light); }
+
+        .savings-col-detail {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .savings-footnote {
+            margin-top: 1.25rem;
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            text-align: center;
+            font-style: italic;
+        }
+
+        .section-divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-light), transparent);
+            margin: 3rem 0;
+        }
+
+        .scorecard-row {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            flex-wrap: wrap;
+        }
+
+        .scorecard-item {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .scorecard-label {
+            color: var(--text-muted);
+        }
+
+        .scorecard-score {
+            font-weight: 700;
+        }
+
         @media (max-width: 640px) {
             body { font-size: 16px; }
-
             .hero { padding: 2rem 1rem 1.75rem; }
             .content-wrapper { padding: 1.5rem 1rem 3rem; }
-
             .meta { gap: 0.75rem; }
-
-            .toc { padding: 1.25rem; }
-
-            .diagram-flow {
-                flex-direction: column;
-            }
-
-            .diagram-arrow {
-                transform: rotate(90deg);
-            }
-
-            .score-bar-group {
-                flex-wrap: wrap;
-            }
-
-            .score-label {
-                min-width: 100%;
-            }
-
-            .author-card {
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-            }
-
+            .diagram-flow { flex-direction: column; }
+            .diagram-arrow { transform: rotate(90deg); }
+            .score-bar-group { flex-wrap: wrap; }
+            .score-label { min-width: 100%; }
+            .author-card { flex-direction: column; align-items: center; text-align: center; }
             .cta-section { padding: 1.5rem; }
-
-            .comparison {
-                font-size: 0.8125rem;
-            }
-
-            .comparison th,
-            .comparison td {
-                padding: 0.5rem 0.625rem;
-            }
-
-            .results-grid {
-                grid-template-columns: 1fr;
-            }
+            .comparison { font-size: 0.8125rem; }
+            .comparison th, .comparison td { padding: 0.5rem 0.625rem; }
+            .results-grid { grid-template-columns: 1fr; }
+            .savings-grid { grid-template-columns: 1fr; gap: 1rem; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Hero Section -->
     <header class="hero">
         <div class="hero-inner">
             <nav class="breadcrumb">
                 <a href="../index.html">llm-d LoRA Routing Visualizer</a>
                 <span class="sep">&#9656;</span>
-                <a href="#">Blog</a>
+                <a href="#">Deep Dive</a>
             </nav>
 
             <div class="badge-row">
@@ -777,10 +812,10 @@
                 <span class="badge badge-version">llm-d v0.5</span>
             </div>
 
-            <h1>Cache-Aware LoRA Routing in llm-d: Eliminating Adapter Swap Overhead at Scale</h1>
+            <h1>Your LoRA Adapters Are Thrashing Your GPUs</h1>
 
             <p class="subtitle">
-                How llm-d's Endpoint Picker intelligently routes requests to pods that already have the right LoRA adapter loaded, turning multi-tenant LLM serving from a cache-thrashing nightmare into an efficient, swap-free pipeline.
+                You have 12 LoRA adapters, 8 GPUs, and a swap rate that's killing your p95. Every time a request hits the wrong pod, you pay 200-670ms of swap latency while the batch pipeline drains. Here's how llm-d's Endpoint Picker turns multi-tenant adapter serving from a cache-thrashing disaster into something that actually works.
             </p>
 
             <div class="meta">
@@ -800,97 +835,68 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                     </svg>
-                    <span>20 min read</span>
+                    <span>22 min read</span>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- Main Content -->
     <main class="content-wrapper">
 
-        <!-- Table of Contents -->
-        <nav class="toc">
-            <div class="toc-title">Table of Contents</div>
-            <ol>
-                <li><a href="#lora-mechanics">LoRA Mechanics Deep Dive</a></li>
-                <li><a href="#swap-cost-model">The Adapter Swap Cost Model</a></li>
-                <li><a href="#epp-scoring">EPP's Scoring Function for Adapter Affinity</a></li>
-                <li><a href="#multi-adapter">Multi-Adapter Serving Architecture</a></li>
-                <li><a href="#production-patterns">Production Patterns</a></li>
-                <li><a href="#comparison">Comparison with Other Approaches</a></li>
-                <li><a href="#case-studies">Real-World Case Studies</a></li>
-                <li><a href="#disaggregated">Disaggregated Prefill/Decode with LoRA</a></li>
-            </ol>
-        </nav>
-
-        <!-- Section 1: LoRA Mechanics Deep Dive -->
+        <!-- Section 1: LoRA Mechanics -->
         <section id="lora-mechanics">
             <h2>
                 <span class="section-number">01</span>
-                LoRA Mechanics Deep Dive
+                What a LoRA Adapter Actually Is (and Why Size Matters for Routing)
             </h2>
 
             <p>
-                Before we can understand why adapter-aware routing matters, we need to understand exactly what a LoRA adapter is and how it modifies a running model. <strong>Low-Rank Adaptation (LoRA)</strong>, introduced by <a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener">Hu et al. (2021)</a>, is a parameter-efficient fine-tuning technique that has become the dominant method for customizing large language models in production. Its elegance lies in a simple mathematical observation about weight updates during fine-tuning.
+                Picture your production cluster. You're running Llama-3.1-70B on 8 H100 pods. Your platform team has fine-tuned 12 LoRA adapters: <code>legal-assistant-v2</code> for contract analysis, <code>medical-qa-hipaa</code> for clinical decision support, <code>code-reviewer-xl</code> for pull request review, <code>customer-support-es</code> for Spanish-language support tickets, and 8 more. Each adapter modifies the base model's behavior for a specific task without touching the original weights.
             </p>
-
-            <h3>The Low-Rank Decomposition</h3>
 
             <p>
-                During standard fine-tuning, every weight matrix <strong>W</strong> in the model is updated by a delta matrix <strong>&Delta;W</strong>, producing a new effective weight <strong>W' = W + &Delta;W</strong>. Research has shown that these delta matrices tend to have very low intrinsic rank &mdash; meaning the information in the update can be captured by a much smaller pair of matrices. LoRA exploits this by decomposing the update into two low-rank matrices:
+                <strong>Low-Rank Adaptation (LoRA)</strong>, from <a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener">Hu et al. (2021)</a>, decomposes weight updates into two small matrices instead of modifying the full weight matrix. The math is simple:
             </p>
 
-            <pre><code><span class="code-label">math</span>W' = W + B &times; A
+            <pre><code><span class="code-label">math</span>W' = W + B x A
 
 where:
-  W  is the original frozen weight matrix  (d &times; k)
-  B  is the down-projection matrix          (d &times; r)
-  A  is the up-projection matrix            (r &times; k)
-  r  is the rank (typically 4 to 64)        r &lt;&lt; min(d, k)</code></pre>
+  W  = original frozen weight matrix  (d x k)
+  B  = down-projection               (d x r)
+  A  = up-projection                  (r x k)
+  r  = rank (4 to 64)                r << min(d, k)</code></pre>
 
             <p>
-                The original weight matrix <strong>W</strong> is never modified. During inference, the adapter's contribution is computed as an additive overlay: for an input <strong>x</strong>, the output becomes <strong>Wx + BAx</strong>. The matrices <strong>B</strong> and <strong>A</strong> are the only trainable parameters during fine-tuning, and they are the only parameters stored and transferred when loading an adapter.
+                The original weights never change. During inference, the adapter adds <strong>BAx</strong> to the base model's output <strong>Wx</strong>. That's it. The adapter is just the B and A matrices -- nothing else gets stored or transferred.
             </p>
 
-            <h3>Why Rank Choice Matters</h3>
+            <h3>Rank determines everything about routing cost</h3>
 
             <p>
-                The rank <strong>r</strong> is the single most important hyperparameter in a LoRA adapter. It controls the tradeoff between adapter expressiveness and size:
+                The rank <strong>r</strong> controls adapter size, and adapter size determines swap cost. For a 70B model with 8192-dimensional hidden states:
             </p>
 
             <ul>
-                <li><strong>Rank 4:</strong> Extremely compact. For a 70B model with 8192-dimensional hidden states, each adapted weight matrix adds only 2 &times; 8192 &times; 4 = 65,536 parameters. Total adapter size across all attention layers comes in around 12&ndash;15 MB. Suitable for lightweight style or tone adjustments where the base model already has strong domain knowledge.</li>
-                <li><strong>Rank 16:</strong> The most common production choice. Each weight matrix adds 262,144 parameters per adapted layer. Total adapter size for a 70B model is approximately 50 MB. This rank captures meaningful domain specialization while remaining small enough to swap quickly and store many adapters simultaneously.</li>
-                <li><strong>Rank 64:</strong> High capacity. Each weight matrix adds over 1 million parameters, bringing total adapter size to approximately 200 MB. Used when significant behavioral changes are needed &mdash; for example, training a model to follow complex output schemas or to handle an entirely new domain like code generation in a niche programming language.</li>
-                <li><strong>Rank 128+:</strong> Rarely used in production. At this point, the adapter approaches the size where full fine-tuning of select layers may be more efficient. Adapter size exceeds 400 MB, and the swap cost begins to erode the latency benefits of the LoRA approach.</li>
+                <li><strong>Rank 4 (~15 MB):</strong> Lightweight tone/style adjustments. Swaps in under 2ms over PCIe Gen5. Your <code>customer-support-es</code> adapter might be this small -- it's mostly adjusting language patterns, not domain knowledge.</li>
+                <li><strong>Rank 16 (~50 MB):</strong> The production sweet spot. Your <code>legal-assistant-v2</code> and <code>medical-qa-hipaa</code> adapters live here. Meaningful domain specialization. Swaps in 3-5ms from host memory.</li>
+                <li><strong>Rank 64 (~200 MB):</strong> Heavy-duty specialization. Your <code>code-reviewer-xl</code> adapter needs this -- reviewing code in 15 languages requires significant behavioral changes. Swaps take 12-20ms.</li>
+                <li><strong>Rank 128+ (~400 MB+):</strong> Rarely justified. At this point you're better off with full fine-tuning on selected layers. Swap cost starts to eat your latency budget.</li>
             </ul>
 
             <div class="callout">
-                <div class="callout-label">Key Insight</div>
+                <div class="callout-label">Why this matters for routing</div>
                 <p>
-                    Adapter size directly impacts routing decisions. A rank-16 adapter at <strong>~50 MB</strong> can be transferred to GPU HBM in under 5 ms over PCIe Gen5. A rank-64 adapter at <strong>~200 MB</strong> takes 15&ndash;20 ms. When you are making routing decisions at the microsecond level, this 4x difference in swap cost is significant enough to change which pod is optimal.
+                    A rank-16 <code>legal-assistant-v2</code> at <strong>50 MB</strong> transfers to GPU HBM in 3ms over PCIe Gen5. A rank-64 <code>code-reviewer-xl</code> at <strong>200 MB</strong> takes 15ms. When you're making routing decisions at the microsecond level, that 5x difference in swap cost changes which pod is optimal. The EPP knows the size of every adapter on every pod.
                 </p>
             </div>
 
-            <h3>How Adapters Modify Attention</h3>
+            <h3>Adapters modify attention -- and that makes KV caches adapter-specific</h3>
 
             <p>
-                LoRA adapters are typically applied to the attention projection matrices in each transformer layer. A standard multi-head attention block has four weight matrices:
+                Most production adapters target the Q (query) and V (value) projection matrices in each transformer layer. Some, like <code>code-reviewer-xl</code>, also adapt K and O projections for higher quality, roughly doubling adapter size.
             </p>
 
-            <ul>
-                <li><strong>Q (Query) projection:</strong> Maps the input to query vectors. LoRA on Q modifies what the model "looks for" in the input.</li>
-                <li><strong>K (Key) projection:</strong> Maps the input to key vectors. LoRA on K modifies how the model represents what information each position "offers."</li>
-                <li><strong>V (Value) projection:</strong> Maps the input to value vectors. LoRA on V modifies the actual content that gets aggregated during attention.</li>
-                <li><strong>O (Output) projection:</strong> Maps concatenated attention heads back to the model's hidden dimension. LoRA on O modifies how attention results are combined.</li>
-            </ul>
-
-            <p>
-                Most production adapters target Q and V projections, following the original LoRA paper's finding that these provide the best quality-per-parameter tradeoff. Some adapters also include K and O projections for higher-quality adaptation, roughly doubling the adapter size. The choice of which projections to adapt is fixed at training time and becomes part of the adapter's metadata that the serving engine needs to know when loading it.
-            </p>
-
-            <pre><code><span class="code-label">architecture</span>Transformer Layer (with LoRA adapters on Q, V)
+            <pre><code><span class="code-label">architecture</span>Transformer Layer (with LoRA on Q, V)
 ================================================
 
 Input x (hidden_dim=8192)
@@ -901,94 +907,87 @@ Input x (hidden_dim=8192)
     |
     +---> Attention(Q, K, V)
     |
-    +---> Output = W_o * attn_result     # original output projection
+    +---> Output = W_o * attn_result
     |
-    +---> FFN layers (typically not adapted)
+    +---> FFN layers (not adapted)
     |
 Output</code></pre>
 
             <p>
-                This architecture means that the KV cache produced during prefill is <strong>adapter-specific</strong>. The key and value tensors stored in the cache reflect the adapted weight matrices. If a different adapter is used during the decode phase, the KV cache entries will be inconsistent with the model's expectations, producing degraded or nonsensical output. This is why both the prefill and decode pods in a disaggregated setup must have the same adapter loaded &mdash; a point we will return to in Section 8.
+                The critical implication: the KV cache produced during prefill is <strong>adapter-specific</strong>. Key and value tensors reflect the adapted weight matrices. If you use a different adapter during decode, the KV cache entries are inconsistent and the output is garbage. Both prefill and decode pods must have the same adapter loaded. We'll come back to this in Section 8.
             </p>
         </section>
 
-        <!-- Section 2: The Adapter Swap Cost Model -->
+        <!-- Section 2: Swap Cost Model -->
         <section id="swap-cost-model">
             <h2>
                 <span class="section-number">02</span>
-                The Adapter Swap Cost Model
+                The True Cost of an Adapter Swap
             </h2>
 
             <p>
-                Understanding the true cost of an adapter swap requires looking beyond the simple data-transfer calculation. A swap is not merely "copy 50 MB to GPU memory." It is a multi-stage process with both direct latency costs and indirect throughput penalties that compound under load.
+                A swap is not "copy 50 MB to GPU memory." It's a five-phase process, and the worst phase has nothing to do with data transfer.
             </p>
 
-            <h3>GPU Memory Management</h3>
+            <h3>GPU memory is a zero-sum game</h3>
 
             <p>
-                GPU High Bandwidth Memory (HBM) is a flat address space managed by the CUDA runtime and the serving engine's memory allocator. In a running vLLM instance, HBM is divided among several consumers:
+                On a running vLLM instance, GPU HBM is carved up among four consumers. There's no slack:
             </p>
 
             <ul>
-                <li><strong>Base model weights:</strong> The largest consumer. A 70B model in FP16 occupies approximately 140 GB. With INT8 quantization, this drops to roughly 70 GB; with INT4 (GPTQ/AWQ), approximately 35 GB.</li>
-                <li><strong>KV cache pool:</strong> Pre-allocated memory for storing key and value tensors across active sequences. Typically sized at 20&ndash;40% of remaining memory after model weights.</li>
-                <li><strong>Adapter weight slots:</strong> Memory reserved for one or more LoRA adapter weight sets. Each slot must be large enough for the largest adapter the pod might serve.</li>
-                <li><strong>CUDA workspace:</strong> Scratch memory for intermediate computations, activation tensors, and NCCL communication buffers in multi-GPU setups.</li>
+                <li><strong>Base model weights:</strong> 70B in FP16 = 140 GB. INT4 (GPTQ/AWQ) = 35 GB. This is fixed.</li>
+                <li><strong>KV cache pool:</strong> 20-40% of remaining memory after model weights. Pre-allocated.</li>
+                <li><strong>Adapter weight slots:</strong> Space for loaded adapters. Each slot sized for the largest adapter the pod might serve.</li>
+                <li><strong>CUDA workspace:</strong> Scratch memory, activation tensors, NCCL buffers for multi-GPU. ~5 GB.</li>
             </ul>
 
             <p>
-                When a swap occurs, the serving engine must deallocate the outgoing adapter's memory and allocate space for the incoming adapter. If the adapters are different sizes (a rank-16 adapter being replaced by a rank-64 adapter), the allocator may need to coalesce free blocks or compact memory to create a contiguous region large enough. This <strong>fragmentation overhead</strong> is often overlooked but can add 2&ndash;10 ms to the swap, particularly on GPUs that are running near their memory capacity.
+                When <code>medical-qa-hipaa</code> (rank-16, 50 MB) gets evicted to make room for <code>code-reviewer-xl</code> (rank-64, 200 MB), the allocator has to coalesce free blocks. That fragmentation overhead adds 2-10ms -- before any data even moves.
             </p>
 
-            <h3>The Full Swap Latency Breakdown</h3>
+            <h3>The five phases of a swap</h3>
 
             <p>
-                A complete adapter swap passes through five distinct phases. The following numbers are representative of a rank-16 adapter (~50 MB) on an A100/H100 GPU with PCIe Gen4/Gen5 interconnect:
+                These numbers are for a rank-16 adapter (~50 MB) on A100/H100 with PCIe Gen4/Gen5:
             </p>
 
             <pre><code><span class="code-label">latency breakdown</span>Phase                      Duration       Notes
 ---------------------------------------------------------------
-1. Batch drain              0 - 500ms      Must wait for active batch to finish
-2. Weight deallocation      ~5ms           Free GPU memory, update allocator state
-3. Weight transfer          10 - 50ms      PCIe/NVLink transfer from host/NVMe
+1. Batch drain              0 - 500ms      Wait for active batch to finish
+2. Weight deallocation      ~5ms           Free GPU memory, update allocator
+3. Weight transfer          10 - 50ms      PCIe/NVLink from host/NVMe
    - 50MB via PCIe Gen5:    ~3ms
    - 200MB via PCIe Gen5:   ~12ms
    - 50MB from NVMe:        ~10ms
    - 200MB from NVMe:       ~40ms
-4. Initialization           ~20ms          Register weights in compute graph,
-                                           set up CUDA kernels for adapted layers
-5. Warmup inference         50 - 100ms     First batch runs slower due to:
-                                           - JIT compilation of new kernel configs
-                                           - Cold L2 cache
-                                           - cuBLAS autotuning on new matrix shapes
+4. Initialization           ~20ms          Register weights, set up CUDA kernels
+5. Warmup inference         50 - 100ms     Cold L2 cache, JIT compilation,
+                                           cuBLAS autotuning on new shapes
 ---------------------------------------------------------------
-Total (best case):          ~85ms          Adapter in CPU memory, no batch drain
-Total (worst case):         ~670ms         Large adapter on NVMe, full batch drain</code></pre>
+Total (best case):          ~85ms          Adapter in CPU memory, no drain
+Total (worst case):         ~670ms         Large adapter on NVMe, full drain</code></pre>
 
             <div class="callout callout-warning">
-                <div class="callout-label">The Batch-Draining Penalty</div>
+                <div class="callout-label">The batch drain is the killer</div>
                 <p>
-                    The batch drain is often the largest single contributor to swap latency. Most serving engines cannot atomically swap adapter weights while a batch is in-flight because the adapter weights are referenced by active CUDA kernels. The engine must wait for all sequences in the current batch to either complete their current forward pass or reach a safe synchronization point. At high batch sizes (32&ndash;64 sequences), this drain can take <strong>200&ndash;500 ms</strong> for long-context sequences, dwarfing all other swap costs combined.
+                    Most serving engines can't swap adapter weights while a batch is in-flight -- the weights are referenced by active CUDA kernels. The engine waits for every sequence in the current batch to finish its forward pass. At batch size 32-64 with long-context sequences, this drain takes <strong>200-500ms</strong>. That single phase dwarfs the actual data transfer. And every other request queued on that pod is blocked behind it.
                 </p>
             </div>
 
-            <h3>The Convoy Effect</h3>
+            <h3>The convoy effect: how one swap kills your whole cluster</h3>
 
             <p>
-                The convoy effect, a term borrowed from operating systems scheduling theory, describes what happens when adapter swaps cascade through a serving cluster. The mechanism is straightforward but devastating:
+                This is the pattern that pages your on-call at 3 AM:
             </p>
 
             <ol>
-                <li>Pod A receives a request for adapter X, but currently has adapter Y loaded. It begins draining its batch to swap.</li>
-                <li>While Pod A is draining, it cannot accept new requests. The load balancer redirects Pod A's share of traffic to Pods B and C.</li>
-                <li>Pods B and C are now overloaded. Their queue depths spike, causing the EPP (or any load-aware balancer) to send traffic elsewhere.</li>
-                <li>The redirected traffic includes requests for adapters not loaded on the receiving pods, triggering additional swaps.</li>
-                <li>Multiple pods are now simultaneously draining batches and swapping adapters. Cluster-wide throughput collapses even though individual GPU utilization metrics still look healthy (the GPUs are "busy" doing memory management, not inference).</li>
+                <li>Pod A gets a request for <code>finance-analyst-v3</code>, but has <code>legal-assistant-v2</code> loaded. Starts draining its batch.</li>
+                <li>While Pod A drains, it can't accept requests. The load balancer sends Pod A's traffic to Pods B and C.</li>
+                <li>Pods B and C are now overloaded. Queue depths spike.</li>
+                <li>The redirected traffic includes requests for adapters not on B and C. More swaps trigger.</li>
+                <li>Multiple pods are now simultaneously draining and swapping. Cluster throughput collapses. GPUs show 90%+ utilization -- but they're doing memory management, not inference.</li>
             </ol>
-
-            <p>
-                In extreme cases, this convoy effect can reduce effective cluster throughput to <strong>10&ndash;20% of theoretical capacity</strong>. The cluster has plenty of GPU compute available, but the compute is gated behind a wall of serialized adapter swaps. This is the fundamental problem that cache-aware routing exists to solve.
-            </p>
 
             <pre><code><span class="code-label">convoy effect timeline</span>Time -->  0ms     100ms    200ms    300ms    400ms    500ms    600ms
 Pod A:   [serving][drain..][swap....][warmup.......][serving........]
@@ -997,43 +996,63 @@ Pod C:   [serving][serving][serving][drain..][swap....][warmup.....]
                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
                                      Cluster throughput collapse zone
                                      All pods cycling through swaps</code></pre>
+
+            <p>
+                In the worst case, the convoy effect drops your cluster to <strong>10-20% of theoretical throughput</strong>. The compute is there. It's just gated behind serialized adapter swaps.
+            </p>
+
+            <p>
+                This is the problem that cache-aware routing exists to solve.
+            </p>
         </section>
 
-        <!-- Section 3: EPP's Scoring Function -->
+        <!-- War Story -->
+        <div class="war-story">
+            <div class="war-story-title">War Story: The 3 AM Swap Storm</div>
+            <p>
+                Tuesday, 3:12 AM. A batch retraining pipeline finishes and fires 200 evaluation requests for <code>quant-model-v7</code> -- an adapter that hasn't been touched in 6 hours. Round-robin spreads them across all 8 pods. Every single pod starts draining its batch to swap.
+            </p>
+            <p style="margin-top: 0.75rem;">
+                While the pods are draining, steady-state traffic for <code>legal-assistant-v2</code> and <code>customer-support-es</code> has nowhere to go. Queue depths hit 8/8 across the cluster. The autoscaler sees 92% GPU utilization and does nothing -- the GPUs look busy, they're just not doing inference. P95 latency goes from 180ms to 4.2 seconds. PagerDuty fires. The on-call engineer stares at dashboards for 20 minutes before the convoy clears itself.
+            </p>
+            <p style="margin-top: 0.75rem;">
+                With EPP routing, those 200 eval requests go to 2 pods that had <code>quant-model-v7</code> cached from earlier that day. The other 6 pods never notice. P95 stays at 190ms. Nobody gets paged.
+            </p>
+        </div>
+
+        <!-- Key Insight callout -->
+        <div class="callout-hero">
+            <div class="callout-label">The single most important thing about LoRA routing</div>
+            <p>
+                Adapter swaps don't just cost the swap itself. They <strong>drain the entire batch pipeline</strong>, blocking every other request on that pod for 200-500ms. One unnecessary swap on a busy pod cascades into dozens of delayed requests across the cluster. Smart routing doesn't just avoid swaps -- it prevents the blast radius.
+            </p>
+        </div>
+
+        <hr class="section-divider">
+
+        <!-- Section 3: EPP Scoring -->
         <section id="epp-scoring">
             <h2>
                 <span class="section-number">03</span>
-                EPP's Scoring Function for Adapter Affinity
+                EPP's Scoring Function: How the Math Works
             </h2>
 
             <p>
-                The <strong>Endpoint Picker (EPP)</strong> is llm-d's intelligent routing layer, implemented as an <a href="https://gateway-api.sigs.k8s.io/geps/gep-1742/" target="_blank" rel="noopener">ext-proc</a> filter in the Envoy-based Gateway API data path. When a request arrives, the EPP evaluates every available pod and assigns a composite score to determine the optimal routing target. Understanding how this scoring function works &mdash; and why the weights are set the way they are &mdash; is central to understanding llm-d's approach to multi-adapter serving.
+                The <strong>Endpoint Picker (EPP)</strong> is llm-d's routing layer, running as an <a href="https://gateway-api.sigs.k8s.io/geps/gep-1742/" target="_blank" rel="noopener">ext-proc</a> filter in the Envoy-based Gateway API data path. Every request gets scored against every available pod. The pod with the highest composite score wins.
             </p>
 
-            <h3>The Filter/Scorer Pipeline</h3>
+            <h3>Filter first, then score</h3>
 
             <p>
-                The EPP processes candidate pods in two stages. First, a <strong>filter stage</strong> eliminates pods that cannot serve the request at all &mdash; for example, pods that are in a draining state, pods that have exceeded their maximum queue depth, or pods that do not support the requested model type. Second, a <strong>scorer stage</strong> evaluates the remaining candidates across multiple dimensions and produces a composite score.
+                Stage one eliminates pods that can't serve the request -- draining pods, pods at max queue depth, pods that don't support the model type. This cuts the candidate set by 30-50% with cheap boolean checks. Stage two runs the full multi-signal scoring on the survivors.
             </p>
 
-            <p>
-                This two-stage design is critical for performance. The filter stage is cheap (simple boolean checks) and typically eliminates 30&ndash;50% of candidates, reducing the number of expensive scoring evaluations. The scorer stage then runs the full multi-signal evaluation only on viable pods.
-            </p>
-
-            <h3>The Scoring Formula</h3>
-
-            <p>
-                The EPP's composite score for each candidate pod is a weighted sum of four normalized signals:
-            </p>
+            <h3>The scoring formula</h3>
 
             <pre><code><span class="code-label">scoring function</span>score = 0.50 * adapter_affinity
      + 0.20 * kv_cache_affinity
      + 0.15 * (1 - queue_depth / max_queue_depth)
      + 0.15 * (1 - gpu_utilization / 100)</code></pre>
-
-            <p>
-                Each signal is normalized to the [0, 1] range before weighting, ensuring that the weights directly represent relative importance.
-            </p>
 
             <div class="score-visual">
                 <div class="score-bar-group">
@@ -1066,212 +1085,174 @@ Pod C:   [serving][serving][serving][drain..][swap....][warmup.....]
                 </div>
             </div>
 
-            <h3>Why Adapter Affinity Gets 50% Weight</h3>
+            <h3>A concrete example: scoring <code>medical-qa-hipaa</code></h3>
 
             <p>
-                The weight distribution is not arbitrary. It reflects a <strong>cost asymmetry argument</strong>: the cost of routing a request to a pod without the correct adapter is categorically different from the cost of routing to a slightly more loaded pod.
+                Request comes in for <code>medical-qa-hipaa</code>. Two candidate pods:
+            </p>
+
+            <pre><code><span class="code-label">worked example</span>Pod-02: has medical-qa-hipaa loaded, queue 3/8, GPU 45%, KV cache 0.6
+  score = 0.50 * 1.0   +  0.20 * 0.60  +  0.15 * (1 - 3/8)  +  0.15 * (1 - 0.45)
+        = 0.500        +  0.120        +  0.094               +  0.083
+        = 0.797
+
+Pod-05: does NOT have it, queue 0/8, GPU 12%, KV cache 0.0
+  score = 0.50 * 0.0   +  0.20 * 0.00  +  0.15 * (1 - 0/8)  +  0.15 * (1 - 0.12)
+        = 0.000        +  0.000        +  0.150               +  0.132
+        = 0.282
+
+Winner: Pod-02 (0.797 vs 0.282)</code></pre>
+
+            <p>
+                Pod-05 is completely idle. Zero queue, 12% GPU. But it scores <strong>0.282</strong> because it doesn't have the adapter. Pod-02 is busier -- 3 requests queued, GPU at 45% -- but it scores <strong>0.797</strong> because skipping the swap is worth more than skipping the queue.
+            </p>
+
+            <h3>Why adapter affinity gets 0.50: the cost asymmetry</h3>
+
+            <p>
+                This isn't arbitrary. It's a cost argument.
             </p>
 
             <p>
-                Routing to a pod with queue depth 10 instead of queue depth 5 adds perhaps 50&ndash;100 ms of queueing delay. Routing to a pod without the correct adapter adds 85&ndash;670 ms of swap latency, plus the indirect cost of batch draining that delays every other request on that pod. The swap penalty is 2&ndash;10x larger than the load-balancing penalty in the common case, and can be 50x larger in the worst case. A 50% weight on adapter affinity is, if anything, conservative.
+                Routing to a pod with queue depth 6 instead of queue depth 2 adds 50-100ms of queueing delay. Routing to a pod without the adapter adds 85-670ms of swap latency <em>plus</em> the batch drain that delays every other request on that pod. The swap penalty is 2-10x larger than the load-balancing penalty in the common case. 50x larger in the worst case.
             </p>
-
-            <h3>How Pod State Reporting Works</h3>
 
             <p>
-                The EPP's scoring accuracy depends on timely information about each pod's state. In llm-d, vLLM pods report their state to the EPP through a lightweight health endpoint that provides:
+                A 50% weight on adapter affinity is, if anything, conservative.
             </p>
 
-            <ul>
-                <li><strong>Loaded adapters:</strong> The list of LoRA adapter names currently resident in GPU memory, along with their activity status (active in current batch, cached but idle, or in the process of loading).</li>
-                <li><strong>Adapter capacity:</strong> How many additional adapter slots are available, based on the pod's memory budget and current allocation.</li>
-                <li><strong>Queue depth:</strong> The number of requests currently waiting or in-flight on the pod.</li>
-                <li><strong>GPU utilization:</strong> Current compute utilization percentage, aggregated across all GPUs in a multi-GPU pod.</li>
-                <li><strong>KV cache state:</strong> Prefix hash information for cache-aware prompt routing.</li>
-            </ul>
+            <h3>Adapter affinity is not binary</h3>
 
             <p>
-                This state is reported at a configurable interval, typically every 500 ms to 2 seconds. The EPP maintains a local cache of pod states and uses the most recent report for scoring. A staleness window is applied &mdash; if a pod has not reported in more than 5 seconds, it is filtered out of the candidate set.
+                The EPP distinguishes four levels of affinity:
             </p>
 
-            <h3>Adapter Affinity Scoring in Detail</h3>
-
-            <p>
-                The adapter affinity signal is not a simple binary match. The EPP distinguishes between multiple levels of affinity:
-            </p>
-
-            <pre><code><span class="code-label">pseudocode</span>func scoreAdapterAffinity(pod PodState, requestedAdapter string) float64 {
-    if pod.HasActiveAdapter(requestedAdapter) {
-        return 1.0    // Best: loaded and actively serving this adapter
-    }
-    if pod.HasCachedAdapter(requestedAdapter) {
+            <pre><code><span class="code-label">pseudocode</span>func scoreAdapterAffinity(pod, requestedAdapter) float64 {
+    if pod.HasActiveAdapter(requestedAdapter):
+        return 1.0    // Best: loaded and actively serving
+    if pod.HasCachedAdapter(requestedAdapter):
         return 0.8    // Good: in GPU memory, needs kernel activation
-    }
-    if pod.HasAdapterInCPU(requestedAdapter) {
+    if pod.HasAdapterInCPU(requestedAdapter):
         return 0.4    // Moderate: in host memory, needs PCIe transfer
-    }
-    if pod.HasAdapterCapacity() {
-        return 0.3    // Acceptable: can load from storage without eviction
-    }
-    return 0.0        // Worst: must evict another adapter to make room
+    if pod.HasAdapterCapacity():
+        return 0.3    // Acceptable: can load without eviction
+    return 0.0        // Worst: must evict to make room
 }</code></pre>
 
-            <h3>Tie-Breaking Logic</h3>
+            <h3>Natural clustering -- no configuration required</h3>
 
             <p>
-                When multiple pods have the same composite score &mdash; the most common scenario being two pods that both have the requested adapter actively loaded &mdash; the EPP applies a deterministic tie-breaking cascade:
+                One of the best properties of affinity-aware routing: <strong>adapter clustering emerges without any static mapping</strong>. Nobody configures "adapter X goes to pod Y." The scoring function does it:
             </p>
 
             <ol>
-                <li><strong>KV cache affinity:</strong> If the request includes a prefix that matches cached KV entries on one pod, that pod wins the tie. This is common for multi-turn conversations where the prompt prefix matches the previous turn.</li>
-                <li><strong>Queue depth:</strong> Among remaining ties, the pod with the shortest queue wins. This provides natural load balancing within an adapter's affinity group.</li>
-                <li><strong>Random jitter:</strong> If ties persist (rare), a small random perturbation prevents pathological herding where all requests for a given adapter pile onto the same pod.</li>
-            </ol>
-
-            <h3>The Emergent Clustering Effect</h3>
-
-            <p>
-                One of the most elegant properties of affinity-aware routing is that it produces <strong>natural adapter clustering without any static configuration</strong>. There is no mapping table that says "adapter X always goes to pod Y." Instead, clustering emerges dynamically from the scoring function:
-            </p>
-
-            <ol>
-                <li>The first request for a new adapter goes to the least-loaded pod with available adapter capacity (since no pod has affinity for an unseen adapter, load-based signals dominate).</li>
+                <li>First request for <code>finance-analyst-v3</code> goes to the least-loaded pod (no pod has affinity, so load signals dominate).</li>
                 <li>That pod loads the adapter and now has the highest affinity score for it.</li>
-                <li>Subsequent requests for the same adapter route to the same pod, reinforcing its specialization.</li>
-                <li>Over time, each pod accumulates a working set of 2&ndash;6 frequently-requested adapters.</li>
+                <li>Next request for <code>finance-analyst-v3</code> routes to the same pod.</li>
+                <li>Over time, each pod accumulates a working set of 2-6 frequently-requested adapters.</li>
             </ol>
 
             <div class="diagram">
-                <div class="diagram-title">Affinity-Aware Routing: Natural Adapter Clustering</div>
+                <div class="diagram-title">Emergent Adapter Clustering (no static config)</div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
                     <div class="diagram-box success" style="text-align: left; padding: 1rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 1 &mdash; legal-qa, finance</div>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 1 -- legal-assistant-v2, finance-analyst-v3</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">
-                            req 1: legal-qa &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 2: legal-qa &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 3: finance &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 4: legal-qa &rarr; <span style="color: #4ade80;">HIT</span>
+                            req 1: legal-assistant-v2 &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: legal-assistant-v2 &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: finance-analyst-v3 &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: legal-assistant-v2 &rarr; <span style="color: #4ade80;">HIT</span>
                         </div>
                     </div>
                     <div class="diagram-box success" style="text-align: left; padding: 1rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 2 &mdash; medical, code-review</div>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 2 -- medical-qa-hipaa, code-reviewer-xl</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">
-                            req 1: medical &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 2: code-review &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 3: medical &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 4: medical &rarr; <span style="color: #4ade80;">HIT</span>
+                            req 1: medical-qa-hipaa &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: code-reviewer-xl &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: medical-qa-hipaa &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: medical-qa-hipaa &rarr; <span style="color: #4ade80;">HIT</span>
                         </div>
                     </div>
                     <div class="diagram-box success" style="text-align: left; padding: 1rem;">
-                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 3 &mdash; support, translate</div>
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 3 -- customer-support-es, translate-es-v1</div>
                         <div style="font-size: 0.75rem; color: var(--text-muted);">
-                            req 1: support &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 2: translate &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 3: support &rarr; <span style="color: #4ade80;">HIT</span><br>
-                            req 4: support &rarr; <span style="color: #4ade80;">HIT</span>
+                            req 1: customer-support-es &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: translate-es-v1 &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: customer-support-es &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: customer-support-es &rarr; <span style="color: #4ade80;">HIT</span>
                         </div>
                     </div>
                 </div>
                 <p style="text-align: center; font-size: 0.8125rem; color: var(--text-muted); margin-top: 1.25rem; margin-bottom: 0;">
-                    Result: 0% of requests trigger an adapter swap &mdash; <strong style="color: #4ade80;">12 hits out of 12 requests</strong>
+                    12 requests, 0 swaps -- <strong style="color: #4ade80;">100% cache hit rate</strong>
                 </p>
             </div>
 
             <p>
-                This emergent clustering is self-healing. If a pod restarts and loses its adapter state, the EPP temporarily routes that adapter's traffic to other pods that still have it loaded. As the restarted pod begins receiving requests, it rebuilds its adapter working set organically. No operator intervention is required.
+                This clustering is self-healing. If a pod restarts and loses its adapter state, the EPP reroutes that adapter's traffic to other pods that still have it loaded. As the restarted pod receives requests, it rebuilds its working set organically. No operator intervention.
             </p>
         </section>
 
-        <!-- Section 4: Multi-Adapter Serving Architecture -->
+        <hr class="section-divider">
+
+        <!-- Section 4: Multi-Adapter Architecture -->
         <section id="multi-adapter">
             <h2>
                 <span class="section-number">04</span>
-                Multi-Adapter Serving Architecture
+                Multi-Adapter Serving: More Than One Adapter Per GPU
             </h2>
 
             <p>
-                A common misconception is that each GPU pod can only hold one LoRA adapter at a time, making swaps an inevitable consequence of serving multiple adapters. In reality, modern serving engines support <strong>simultaneous multi-adapter serving</strong>, and understanding this capability is essential for designing an effective routing strategy.
+                A common misconception: each GPU pod holds one LoRA adapter at a time, making swaps inevitable. Wrong. Modern serving engines run <strong>multiple adapters simultaneously</strong> on the same GPU, batching requests across them.
             </p>
 
-            <h3>Shared Base, Additive Overlays</h3>
+            <h3>Shared base, additive overlays</h3>
 
             <p>
-                The base model weights are loaded once into GPU HBM and shared across all requests, regardless of which adapter they target. LoRA adapters are stored separately as small additive overlays. During a forward pass, the serving engine applies the appropriate adapter by adding the low-rank product <strong>BA</strong> to the base weight for each adapted layer. This means that multiple adapters can coexist in GPU memory simultaneously &mdash; they occupy separate memory regions and do not interfere with each other.
+                Base model weights load once and serve every request. LoRA adapters sit alongside them as small additive overlays in separate memory regions. They don't interfere with each other.
             </p>
 
             <pre><code><span class="code-label">memory layout</span>GPU HBM (80 GB on H100)
 =================================================
 | Base Model Weights (INT4)    |  ~35 GB        |
 |-------------------------------|----------------|
-| Adapter Slot 1: legal-qa-v3  |  ~50 MB (r=16) |
-| Adapter Slot 2: medical-v2   |  ~50 MB (r=16) |
-| Adapter Slot 3: code-assist  |  ~200 MB (r=64)|
-| Adapter Slot 4: (empty)      |  reserved      |
+| Slot 1: legal-assistant-v2   |  ~50 MB (r=16) |
+| Slot 2: medical-qa-hipaa     |  ~50 MB (r=16) |
+| Slot 3: code-reviewer-xl     |  ~200 MB (r=64)|
+| Slot 4: (empty)              |  reserved      |
 |-------------------------------|----------------|
 | KV Cache Pool                |  ~30 GB        |
 |-------------------------------|----------------|
 | CUDA Workspace               |  ~5 GB         |
 =================================================</code></pre>
 
-            <h3>Batching Across Adapters</h3>
-
             <p>
-                vLLM's multi-LoRA support enables something powerful: <strong>batching requests that target different adapters in the same inference batch</strong>. The base model's forward pass is computed once for the entire batch. Then, for each adapted layer, the engine applies the correct adapter's <strong>BA</strong> matrices to each sequence's activations based on which adapter that sequence requires.
+                vLLM's multi-LoRA support batches requests targeting different adapters in the same inference batch. The base model's forward pass runs once for the whole batch. Then, for each adapted layer, the engine applies the correct adapter's BA matrices per-sequence. The overhead of multi-adapter batching is under 5% -- the adapter computation is tiny compared to the base model's weight matrices.
             </p>
 
-            <p>
-                This is possible because the LoRA computation is a simple matrix multiply-add operation that can be parallelized across sequences. The engine maintains a mapping from each sequence in the batch to its adapter, and the adapter application step uses this mapping to gather the correct weights. The overhead of multi-adapter batching is small &mdash; typically less than 5% compared to single-adapter batching &mdash; because the adapter computation is dominated by the base model's much larger weight matrices.
-            </p>
+            <h3>How many adapters fit?</h3>
 
-            <h3>Memory Budget Calculation</h3>
-
-            <p>
-                The number of adapters a pod can hold simultaneously is determined by a simple memory budget equation:
-            </p>
-
-            <pre><code><span class="code-label">memory budget</span>available_for_adapters = total_hbm
-                      - base_model_size
-                      - kv_cache_pool_size
-                      - cuda_workspace
-
-adapter_slots = floor(available_for_adapters / max_adapter_size)
+            <pre><code><span class="code-label">memory budget</span>available = total_hbm - base_model - kv_cache - cuda_workspace
 
 Example (H100 80GB, INT4 70B model):
   available = 80 - 35 - 30 - 5 = 10 GB
-  rank-16 adapters: 10 GB / 50 MB  = ~200 slots
-  rank-64 adapters: 10 GB / 200 MB = ~50 slots</code></pre>
+  rank-16 adapters (50 MB each):  ~200 slots
+  rank-64 adapters (200 MB each): ~50 slots</code></pre>
 
             <p>
-                In practice, the number of simultaneously active adapters is constrained more by the serving engine's management overhead than by raw memory capacity. vLLM currently supports up to several hundred registered adapters per instance, with a configurable limit on simultaneously loaded adapters that defaults to values in the range of 8&ndash;64, depending on adapter size and memory pressure.
+                In practice, vLLM caps simultaneously loaded adapters at 8-64 (configurable), limited by management overhead rather than raw memory. But even 8 slots is enough when paired with smart routing -- the EPP ensures those 8 slots contain the adapters your traffic actually needs.
             </p>
 
-            <h3>Eviction Policies</h3>
+            <h3>Eviction: LRU by default, but routing makes it rare</h3>
 
             <p>
-                When a pod's adapter slots are full and a request arrives for a new adapter, the serving engine must evict one adapter to make room. The eviction policy determines which adapter is removed:
+                When slots are full and a new adapter arrives, the serving engine evicts the least-recently-used adapter. The EPP's routing and the pod's eviction policy work as a two-tier system: routing minimizes evictions by sending requests to pods that already have the adapter. When evictions do happen (because no pod has the adapter, or affinity pods are saturated), LRU removes the least-disruptive one. Neither tier alone is sufficient. Together, they keep swap rates in single digits.
             </p>
 
-            <ul>
-                <li><strong>LRU (Least Recently Used):</strong> The adapter that has gone the longest without serving a request is evicted. This is the default policy in most serving engines and works well when adapter popularity follows a long-tail distribution.</li>
-                <li><strong>Frequency-based:</strong> Track request counts per adapter over a sliding window. Evict the adapter with the lowest request frequency. This policy is more resistant to one-off requests polluting the cache.</li>
-                <li><strong>Size-aware LRU:</strong> Factor adapter size into the eviction decision. When choosing between evicting a 50 MB rank-16 adapter and a 200 MB rank-64 adapter that was used slightly more recently, it may be worth evicting the larger adapter if doing so frees enough space for the incoming adapter plus an additional slot.</li>
-            </ul>
-
-            <div class="callout">
-                <div class="callout-label">Key Insight</div>
-                <p>
-                    The EPP's adapter affinity scoring and the pod-level eviction policy work together as a two-tier optimization. The EPP minimizes evictions by routing requests to pods that already have the adapter. When evictions do occur (because no pod has the adapter, or affinity pods are overloaded), the pod-level eviction policy ensures the least-disruptive adapter is removed. Neither layer alone is sufficient &mdash; routing without smart eviction leads to random churn, and smart eviction without routing still sees excessive swap rates.
-                </p>
-            </div>
-
-            <h3>Hot Path Optimization</h3>
+            <h3>Pin your heavy hitters</h3>
 
             <p>
-                For adapters that consistently receive high traffic, operators can configure <strong>permanent residency</strong> &mdash; marking certain adapters as "pinned" so they are never evicted from GPU memory. This is particularly useful for the top 2&ndash;3 adapters that may account for 60&ndash;80% of total traffic. Pinned adapters are pre-loaded at pod startup and excluded from the eviction pool, ensuring that the majority of requests always find their adapter in the hot path.
-            </p>
-
-            <p>
-                The EPP is aware of adapter pinning. When scoring candidates, it knows that a pinned adapter on a pod has zero risk of eviction, which contributes to a higher effective affinity score compared to a non-pinned adapter that might be evicted before the request reaches the pod.
+                For adapters that get 60-80% of total traffic, configure <strong>permanent residency</strong>. Pinned adapters load at pod startup and never get evicted. If <code>legal-assistant-v2</code> and <code>customer-support-es</code> account for 70% of your requests, pin them on 4 pods. The EPP knows about pinning -- a pinned adapter gets a higher effective affinity score because there's zero eviction risk.
             </p>
         </section>
 
@@ -1279,134 +1260,84 @@ Example (H100 80GB, INT4 70B model):
         <section id="production-patterns">
             <h2>
                 <span class="section-number">05</span>
-                Production Patterns
+                Production Patterns That Actually Work
             </h2>
 
             <p>
-                Cache-aware LoRA routing is not a set-and-forget feature. To extract maximum performance in production, operators need strategies for adapter lifecycle management, monitoring, and graceful degradation. The following patterns have emerged from real-world deployments.
+                Adapter-aware routing is not set-and-forget. These patterns come from real deployments.
             </p>
 
-            <h3>Adapter Preloading Strategies</h3>
+            <h3>Preload by time of day</h3>
 
             <p>
-                Rather than waiting for the first request to trigger an adapter load (cold start), production deployments use preloading to ensure adapters are already in GPU memory before traffic arrives. Three preloading strategies are common:
+                Adapter traffic is predictable. <code>customer-support-es</code> peaks during CDMX business hours (9 AM - 6 PM CST). <code>code-reviewer-xl</code> spikes when US developers start their day. A preloading controller uses historical request logs to load adapters before traffic arrives. Cold-start latency drops from 1.2 seconds to zero.
             </p>
 
-            <ul>
-                <li><strong>Time-of-day prediction:</strong> Many adapter traffic patterns are highly predictable. Customer support adapters see peak usage during business hours. Code assistant adapters spike during developer work hours (9 AM&ndash;6 PM local time). A preloading controller can use historical request logs to predict which adapters will be needed in the next time window and load them proactively at the start of each shift.</li>
-                <li><strong>Warm-on-registration:</strong> When a new adapter is registered in the system (for example, after a fine-tuning run completes), immediately load it onto one or more pods. This eliminates cold-start latency for the first user who tests the new adapter.</li>
-                <li><strong>Follow-the-sun:</strong> For global deployments, preload regional adapters based on the active time zone. As the workday ends in Europe, EU-specific adapters are deprioritized in favor of APAC adapters that will see growing traffic.</li>
-            </ul>
-
-            <h3>Hot/Cold Adapter Tiering</h3>
-
-            <p>
-                Not all adapters need to be in GPU memory at all times. A tiered storage strategy minimizes memory pressure while keeping swap latency manageable:
-            </p>
+            <h3>Hot/warm/cold tiering</h3>
 
             <ul>
-                <li><strong>Hot tier (GPU HBM):</strong> Adapters currently loaded in GPU memory and actively serving requests. These serve with zero swap latency. Capacity: 4&ndash;64 adapters per pod, depending on rank and memory budget.</li>
-                <li><strong>Warm tier (CPU host memory):</strong> Adapters that are not currently in GPU memory but are stored in the pod's host RAM (typically 256 GB&ndash;1 TB). Loading from CPU to GPU takes 3&ndash;20 ms over PCIe Gen5. Capacity: hundreds to thousands of adapters per node.</li>
-                <li><strong>Cold tier (NVMe/network storage):</strong> Adapters stored on the node's NVMe SSD or on a shared storage system (like an S3-compatible object store or a distributed filesystem). Loading from NVMe takes 10&ndash;50 ms; from network storage, 50&ndash;200 ms. Capacity: effectively unlimited.</li>
+                <li><strong>Hot (GPU HBM):</strong> Actively serving. Zero swap latency. 4-64 adapters per pod.</li>
+                <li><strong>Warm (CPU host memory):</strong> Not on GPU but in host RAM. Load in 3-20ms over PCIe Gen5. Hundreds of adapters per node.</li>
+                <li><strong>Cold (NVMe/network):</strong> On disk or object storage. Load in 10-200ms. Unlimited capacity.</li>
             </ul>
 
             <p>
-                The tiering system is transparent to the EPP. The pod's state report includes the tier of each adapter, and the EPP's affinity scoring accounts for the expected swap latency at each tier (reflected in the graduated affinity scores from 1.0 for hot to 0.4 for warm to 0.0 for cold).
+                The EPP knows which tier each adapter is in. A warm adapter on Pod A scores higher (affinity 0.4) than a cold adapter on Pod B (affinity 0.0), even if Pod B is less loaded.
             </p>
 
-            <h3>Adapter Affinity Groups</h3>
+            <h3>Affinity groups for pipelines</h3>
 
             <p>
-                Some adapters are frequently requested in sequence. For example, a document processing pipeline might first invoke a <code>classification-v2</code> adapter to categorize a document, then invoke a <code>extraction-legal-v3</code> or <code>extraction-medical-v1</code> adapter based on the classification result. If these adapters are on different pods, the pipeline incurs inter-pod latency and potentially triggers swaps on the second pod.
+                Some adapters get called in sequence. A document processing pipeline invokes <code>doc-classifier-v2</code> first, then <code>legal-extract-v3</code> or <code>medical-extract-v1</code> based on the result. If these adapters are on different pods, you pay inter-pod latency and risk triggering a swap on the second pod.
             </p>
 
             <p>
-                Affinity groups address this by hinting to the EPP that certain adapters should be co-located. The EPP factors group membership into its scoring: if a request for <code>extraction-legal-v3</code> arrives and Pod A has both the adapter and its group peer <code>classification-v2</code> loaded, Pod A gets a small bonus over Pod B that only has <code>extraction-legal-v3</code>. Over time, this causes pipeline-related adapters to naturally co-locate.
+                Affinity groups hint to the EPP that certain adapters should co-locate. Over time, pipeline-related adapters end up on the same pods.
             </p>
 
-            <h3>Graceful Degradation</h3>
-
-            <p>
-                When all pods are at adapter capacity and no pod has the requested adapter loaded, the system must degrade gracefully rather than failing. llm-d implements a multi-level degradation strategy:
-            </p>
-
-            <ol>
-                <li><strong>Evict and load:</strong> Route to the pod with the lowest-value adapter to evict (LRU or frequency-based). The request pays the swap penalty but succeeds.</li>
-                <li><strong>Queue with timeout:</strong> If all pods are actively swapping, queue the request with a configurable timeout (default: 5 seconds). This avoids cascading swaps.</li>
-                <li><strong>Fallback to base model:</strong> If the timeout expires and no pod can serve the adapter, fall back to serving the request with the base model (no adapter). The response quality may be slightly lower, but the user gets a response rather than an error.</li>
-                <li><strong>Signal scaling:</strong> Emit a Kubernetes custom metric indicating adapter pressure. Horizontal pod autoscalers can use this signal to scale the pod pool, adding capacity for the growing adapter set.</li>
-            </ol>
-
-            <h3>Monitoring: Key Metrics</h3>
-
-            <p>
-                Effective adapter-aware routing requires monitoring metrics that traditional serving setups do not track. The critical metrics to watch:
-            </p>
+            <h3>What to monitor</h3>
 
             <ul>
-                <li><strong>Swap rate</strong> (swaps per second per pod): The primary indicator of routing effectiveness. Healthy systems show swap rates below 0.1 swaps/sec/pod (fewer than 1 swap every 10 seconds). Rates above 1.0 indicate routing problems or insufficient adapter capacity.</li>
-                <li><strong>Adapter residency time:</strong> How long each adapter stays loaded before being evicted. Short residency times (under 30 seconds) suggest thrashing &mdash; either too many adapters for the available slots, or poor routing affinity.</li>
-                <li><strong>Cache hit ratio:</strong> The percentage of requests that find their adapter already loaded on the routed pod. Targets of 90%+ are achievable with EPP routing; below 80% suggests configuration tuning is needed.</li>
-                <li><strong>Swap queue depth:</strong> The number of requests waiting for an adapter swap to complete. Consistently non-zero values indicate that swap latency is becoming a bottleneck.</li>
-                <li><strong>Adapter popularity distribution:</strong> The request frequency distribution across adapters. Highly skewed distributions (a few adapters getting 80% of traffic) are easy for the routing layer to optimize. Uniform distributions (all adapters equally popular) are harder and may require more pods.</li>
+                <li><strong>Swap rate (swaps/sec/pod):</strong> Healthy is below 0.1. Above 1.0 means something is wrong.</li>
+                <li><strong>Adapter residency time:</strong> Under 30 seconds = thrashing. Either too many adapters for your slots, or bad routing.</li>
+                <li><strong>Cache hit ratio:</strong> Target 90%+. Below 80% needs tuning.</li>
+                <li><strong>Swap queue depth:</strong> Consistently non-zero = swap latency is your bottleneck.</li>
             </ul>
         </section>
 
-        <!-- Section 6: Comparison with Other Approaches -->
+        <hr class="section-divider">
+
+        <!-- Section 6: Comparison -->
         <section id="comparison">
             <h2>
                 <span class="section-number">06</span>
-                Comparison with Other Approaches
+                How llm-d Compares to Everything Else
             </h2>
 
             <p>
-                llm-d's EPP is not the only system that addresses multi-LoRA serving challenges. Several research projects and production systems have tackled different aspects of the problem. Understanding where each approach fits helps clarify llm-d's distinctive contribution.
-            </p>
-
-            <h3>Punica: SGMV Kernels for Batched LoRA</h3>
-
-            <p>
-                <a href="https://arxiv.org/abs/2310.18547" target="_blank" rel="noopener">Punica</a> introduced Segmented Gather Matrix-Vector (SGMV) multiplication &mdash; custom CUDA kernels that efficiently batch LoRA computations across multiple adapters in a single GPU kernel launch. Instead of running separate kernel calls for each adapter in a multi-adapter batch, SGMV gathers the appropriate adapter weights for each sequence, computes the low-rank products, and scatters the results back, all in one fused operation. This reduces kernel launch overhead and improves GPU utilization when serving heterogeneous adapter requests.
+                Other systems tackle pieces of the multi-LoRA problem. Here's where each fits and where llm-d's EPP is the only solution.
             </p>
 
             <p>
-                However, Punica focuses exclusively on the compute efficiency of multi-adapter batching. It does not address the routing question &mdash; which pod should receive which request. A cluster running Punica-optimized serving engines still needs an intelligent routing layer to avoid unnecessary adapter swaps between pods.
-            </p>
-
-            <h3>S-LoRA: Unified Paging for Adapter Weights</h3>
-
-            <p>
-                <a href="https://arxiv.org/abs/2311.03285" target="_blank" rel="noopener">S-LoRA</a> takes a memory management approach, applying the same paging concepts that vLLM uses for KV cache to adapter weights themselves. Adapters are stored in a shared, paged memory pool rather than in fixed-size slots. This allows more efficient memory utilization: a rank-64 adapter does not waste the same amount of memory as allocating a fixed slot sized for the largest possible adapter. S-LoRA also introduces adapter weight parallelism, distributing adapter computations across tensor-parallel groups.
+                <a href="https://arxiv.org/abs/2310.18547" target="_blank" rel="noopener"><strong>Punica</strong></a> introduced SGMV (Segmented Gather Matrix-Vector) kernels for efficient multi-adapter batching in a single GPU kernel launch. Makes individual pods faster at serving mixed-adapter batches. Does not help you route requests to the right pod.
             </p>
 
             <p>
-                Like Punica, S-LoRA's contributions are at the per-node serving level. It makes individual pods better at hosting many adapters simultaneously, but it does not provide inter-pod routing intelligence.
-            </p>
-
-            <h3>dLoRA: Dynamic LoRA Loading</h3>
-
-            <p>
-                <a href="https://arxiv.org/abs/2404.18346" target="_blank" rel="noopener">dLoRA</a> addresses dynamic adapter lifecycle management &mdash; the process of loading, unloading, and migrating adapters across GPUs in response to changing traffic patterns. dLoRA introduces a controller that monitors adapter request rates and proactively migrates adapters between GPUs to minimize swap latency. It also supports adapter replication, placing copies of popular adapters on multiple GPUs for load distribution.
+                <a href="https://arxiv.org/abs/2311.03285" target="_blank" rel="noopener"><strong>S-LoRA</strong></a> applies paged memory management to adapter weights, the same trick vLLM uses for KV cache. Better memory utilization per node. Still no inter-pod routing.
             </p>
 
             <p>
-                dLoRA's approach is the closest to llm-d's EPP in spirit, as it considers the routing/placement problem rather than just the serving problem. The key difference is scope: dLoRA operates within a single multi-GPU node, while the EPP operates at the Kubernetes cluster level across potentially hundreds of pods. dLoRA also lacks the multi-signal scoring that the EPP uses &mdash; it routes based primarily on adapter presence, without considering KV cache affinity, queue depth, or GPU utilization as weighted signals.
-            </p>
-
-            <h3>How llm-d's EPP Fits In</h3>
-
-            <p>
-                The critical insight is that <strong>the EPP is complementary to these serving-level optimizations, not competitive with them</strong>. The EPP works at the routing layer, deciding which pod receives each request. The serving engines on those pods can incorporate Punica-style SGMV kernels for efficient multi-adapter batching, S-LoRA-style paged memory management for maximizing adapter capacity, and dLoRA-style intra-node adapter migration for multi-GPU optimization &mdash; all simultaneously.
+                <a href="https://arxiv.org/abs/2404.18346" target="_blank" rel="noopener"><strong>dLoRA</strong></a> handles dynamic adapter loading and migration across GPUs within a single node. Closest to the EPP in spirit, but scoped to one multi-GPU server, not a Kubernetes cluster. Routes on adapter presence only -- no KV cache, queue depth, or GPU utilization signals.
             </p>
 
             <p>
-                In practice, llm-d's integration with vLLM means that many of these optimizations are already available through vLLM's multi-LoRA implementation, which has incorporated ideas from both Punica and S-LoRA. The EPP adds the cluster-level routing intelligence that none of these systems provide on their own.
+                <strong>The EPP is complementary to all of these.</strong> It operates at the cluster routing layer. The pods underneath can run Punica kernels, S-LoRA memory management, and dLoRA-style intra-node migration. In practice, vLLM already incorporates ideas from Punica and S-LoRA. The EPP adds the cluster-level intelligence that none of these provide.
             </p>
 
             <table class="comparison">
                 <thead>
                     <tr>
-                        <th>Feature</th>
+                        <th>Capability</th>
                         <th>Punica</th>
                         <th>S-LoRA</th>
                         <th>dLoRA</th>
@@ -1426,14 +1357,14 @@ Example (H100 80GB, INT4 70B model):
                         <td class="metric-bad">None</td>
                         <td class="metric-bad">None</td>
                         <td class="metric-bad">None</td>
-                        <td class="metric-good">Multi-signal scoring</td>
+                        <td class="metric-good">Multi-signal</td>
                     </tr>
                     <tr>
                         <td>Multi-signal scoring</td>
                         <td class="metric-bad">No</td>
                         <td class="metric-bad">No</td>
                         <td class="metric-neutral">Adapter only</td>
-                        <td class="metric-good">4 signals, weighted</td>
+                        <td class="metric-good">4 signals</td>
                     </tr>
                     <tr>
                         <td>P/D disaggregation</td>
@@ -1447,13 +1378,20 @@ Example (H100 80GB, INT4 70B model):
                         <td class="metric-bad">No</td>
                         <td class="metric-bad">No</td>
                         <td class="metric-bad">No</td>
-                        <td class="metric-good">Gateway API ext-proc</td>
+                        <td class="metric-good">Gateway API</td>
+                    </tr>
+                    <tr>
+                        <td>Swap prevention</td>
+                        <td class="metric-bad">No</td>
+                        <td class="metric-bad">No</td>
+                        <td class="metric-neutral">Within node</td>
+                        <td class="metric-good">Cluster-wide</td>
                     </tr>
                     <tr>
                         <td>Memory management</td>
                         <td class="metric-neutral">Basic</td>
                         <td class="metric-good">Paged pool</td>
-                        <td class="metric-good">Dynamic migration</td>
+                        <td class="metric-good">Dynamic</td>
                         <td class="metric-neutral">Via vLLM</td>
                     </tr>
                     <tr>
@@ -1461,39 +1399,57 @@ Example (H100 80GB, INT4 70B model):
                         <td>Single GPU</td>
                         <td>Single node</td>
                         <td>Single node</td>
-                        <td>Cluster-wide</td>
+                        <td class="metric-good">Cluster-wide</td>
                     </tr>
                 </tbody>
             </table>
+
+            <div class="scorecard-row">
+                <div class="scorecard-item">
+                    <span class="scorecard-label">Scorecard:</span>
+                </div>
+                <div class="scorecard-item">
+                    <span class="scorecard-label">Punica</span>
+                    <span class="scorecard-score" style="color: #f87171;">2/8</span>
+                </div>
+                <div class="scorecard-item">
+                    <span class="scorecard-label">S-LoRA</span>
+                    <span class="scorecard-score" style="color: #fbbf24;">3/8</span>
+                </div>
+                <div class="scorecard-item">
+                    <span class="scorecard-label">dLoRA</span>
+                    <span class="scorecard-score" style="color: #fbbf24;">3/8</span>
+                </div>
+                <div class="scorecard-item">
+                    <span class="scorecard-label">llm-d EPP</span>
+                    <span class="scorecard-score" style="color: #4ade80;">7/8</span>
+                </div>
+            </div>
         </section>
 
-        <!-- Section 7: Real-World Case Studies -->
+        <!-- Section 7: Case Studies -->
         <section id="case-studies">
             <h2>
                 <span class="section-number">07</span>
-                Real-World Case Studies
+                What Happens When You Turn This On
             </h2>
 
+            <h3>Multi-tenant SaaS: 50 customers, 12 pods</h3>
+
             <p>
-                The following case studies illustrate how cache-aware LoRA routing transforms production workloads. Each demonstrates a different traffic pattern and shows the quantitative impact of adapter-affinity routing compared to naive load balancing.
+                A B2B platform provides AI customer support for 50+ enterprise customers. Each customer has a custom LoRA adapter trained on their product docs and brand voice. The platform runs 12 vLLM pods on a 70B base model (INT4), handling 2,000 requests/minute.
             </p>
 
-            <h3>Customer Support Platform</h3>
+            <h4>Before: round-robin routing</h4>
 
             <p>
-                A large B2B SaaS platform provides AI-powered customer support for 50+ enterprise customers. Each customer has a custom LoRA adapter trained on their product documentation, support ticket history, and brand voice guidelines. The platform serves approximately 2,000 requests per minute across a cluster of 12 vLLM pods running a 70B base model with INT4 quantization.
+                Each pod gets a uniform mix of all 50+ adapters. Each pod holds 8 adapters in GPU memory. 50 adapters across 8 slots = 84% of requests need a swap. During peak hours, the cluster burns through 1,600 swaps/minute. The convoy effect is brutal -- P95 spikes from 400ms to over 2 seconds during swap cascades.
             </p>
 
-            <h4>Before EPP: Round-Robin Routing</h4>
+            <h4>After: EPP adapter-affinity routing</h4>
 
             <p>
-                With standard Kubernetes load balancing, each pod received a uniform mix of requests across all 50+ adapters. Each pod could hold approximately 8 adapters in GPU memory at once. The math was straightforward: 50 adapters across 8 slots meant that roughly 84% of requests required an adapter swap. During peak hours (when all 50 adapters were active), the effective swap rate exceeded 1,600 swaps per minute cluster-wide. The convoy effect was severe &mdash; during swap cascades, P95 latency spiked from 400 ms to over 2 seconds, and several customer SLAs were at risk.
-            </p>
-
-            <h4>After EPP: Adapter-Affinity Routing</h4>
-
-            <p>
-                After deploying llm-d's EPP with adapter-affinity scoring, the adapter traffic naturally clustered. The top 10 customers accounted for 70% of traffic, and their adapters became pinned residents on 4 dedicated pods. The remaining 40+ lower-traffic adapters distributed across the other 8 pods, with the LRU eviction policy handling the long tail.
+                The top 10 customers (70% of traffic) get their adapters pinned on 4 dedicated pods. The remaining 40+ adapters distribute across 8 pods with LRU eviction.
             </p>
 
             <div class="results-grid">
@@ -1518,135 +1474,151 @@ Example (H100 80GB, INT4 70B model):
             </div>
 
             <p>
-                The remaining 8% swap rate came primarily from low-traffic adapters that were evicted during periods of inactivity and re-loaded when their customers came back online. The platform's effective throughput increased by 50% without adding any hardware, simply by eliminating the swap overhead that was consuming GPU cycles.
+                50% throughput increase. Zero hardware added. The only change was routing requests to the right pods.
             </p>
 
-            <h3>Code Assistant Suite</h3>
+            <h3>Code assistant: 4 languages, 6 pods</h3>
 
             <p>
-                A developer tools company offers AI code assistance with 4 specialized adapters: Python, JavaScript, Rust, and Go. Each adapter is fine-tuned on language-specific codebases, documentation, and idioms. The service runs on 6 pods with an H100 GPU each, serving a mix of IDE plugin users and CI/CD pipeline integrations.
-            </p>
-
-            <p>
-                Traffic follows developer work patterns with strong temporal locality. During a typical workday, a developer works primarily in one language for extended periods, producing bursts of requests for a single adapter. But different developers work in different languages, so the aggregate traffic across the cluster is mixed.
+                A dev tools company runs 4 specialized adapters: Python, JavaScript, Rust, Go. 6 H100 pods. Traffic follows developer work patterns -- strong temporal locality per user, mixed traffic at the cluster level.
             </p>
 
             <p>
-                Without affinity routing, each pod received a mix of all 4 languages. Despite there being only 4 adapters (well within each pod's capacity), the random distribution meant that pods were constantly activating and deactivating adapters in their batch pipeline, paying the warmup penalty repeatedly. With EPP routing, Python and JavaScript traffic (the two highest-volume adapters) were each given natural affinity to 2 pods, while Rust and Go shared the remaining 2 pods. The swap rate dropped from 45% to 7%, and the warmup overhead that was adding 50&ndash;100 ms to post-swap requests was nearly eliminated. P99 latency improved from 1.1 seconds to 320 ms.
+                With round-robin, each pod churns through all 4 adapters despite having plenty of slots. The warmup penalty after each swap adds 50-100ms. With EPP routing, Python and JavaScript (the two highest-volume) each get natural affinity to 2 pods. Rust and Go share the remaining 2. Swap rate drops from 45% to 7%. P99 improves from 1.1 seconds to 320ms.
             </p>
 
-            <h3>Domain-Specific RAG: Legal Research Platform</h3>
+            <h3>Legal research: 12 jurisdictions, session stickiness</h3>
 
             <p>
-                A legal technology company provides a research assistant that combines retrieval-augmented generation with jurisdiction-specific fine-tuning. The platform hosts 12 jurisdiction-specific adapters (Federal, California, New York, Texas, Delaware, Illinois, plus 6 more). Each adapter is trained on the case law, statutes, and legal conventions of its jurisdiction, so that generated legal analyses use the correct citation formats, precedent hierarchies, and procedural terminology.
-            </p>
-
-            <p>
-                Legal research has strong session locality: a lawyer working on a California case makes dozens of queries in sequence, all targeting the <code>ca-law-v4</code> adapter. But the firm has lawyers across all 12 jurisdictions, creating cross-adapter traffic at the cluster level.
+                A legal tech platform hosts 12 jurisdiction-specific adapters (<code>ca-jurisdiction-v4</code>, <code>ny-jurisdiction-v3</code>, <code>federal-law-v5</code>, etc.). Each adapted for local case law, citation formats, and procedural terminology.
             </p>
 
             <p>
-                The deployment uses EPP with adapter affinity routing plus time-of-day preloading. Because the firm's offices span Eastern, Central, and Pacific time zones, the preloading controller loads jurisdiction adapters based on which offices are currently active. When the New York office opens at 9 AM ET, the <code>ny-law-v3</code> and <code>federal-law-v5</code> adapters are preloaded onto pods closest to the eastern availability zone. The result: cold-start latency for the first query of the day dropped from 1.2 seconds (adapter load from NVMe + warmup) to 180 ms (adapter already hot in GPU memory, only KV cache computation needed). Session-continuation latency for subsequent queries in the same jurisdiction is consistently under 200 ms, because the EPP routes every request in the session to the same pod.
+                Legal research has strong session locality: a lawyer working on a California case makes dozens of sequential queries, all targeting <code>ca-jurisdiction-v4</code>. The deployment uses EPP with time-of-day preloading -- when the New York office opens at 9 AM ET, <code>ny-jurisdiction-v3</code> and <code>federal-law-v5</code> are preloaded onto pods near the eastern availability zone.
+            </p>
+
+            <p>
+                Cold-start latency for the first query of the day: <strong>1.2 seconds to 180ms</strong>. Subsequent queries in the same session: consistently under 200ms because the EPP routes every request to the same pod.
             </p>
 
             <div class="callout callout-success">
-                <div class="callout-label">Pattern: Session Affinity Amplifies Adapter Affinity</div>
+                <div class="callout-label">Pattern: session affinity amplifies adapter affinity</div>
                 <p>
-                    When adapter traffic has session-level locality (the same user repeatedly requesting the same adapter), combining adapter affinity with session stickiness in the EPP produces compounding benefits. The EPP routes a session's first request based on adapter affinity, and subsequent requests in the session inherit both adapter and KV cache affinity. This is the ideal case for multi-turn conversations and iterative research workflows.
+                    When users stick to one adapter per session (multi-turn conversations, iterative research), combining adapter affinity with session stickiness produces compounding benefits. The first request routes by adapter affinity. Subsequent requests inherit both adapter and KV cache affinity. This is the ideal case for any conversational or research workflow.
                 </p>
             </div>
         </section>
 
-        <!-- Section 8: Disaggregated Prefill/Decode with LoRA -->
+        <hr class="section-divider">
+
+        <!-- Section 8: Disaggregated P/D -->
         <section id="disaggregated">
             <h2>
                 <span class="section-number">08</span>
-                Disaggregated Prefill/Decode with LoRA
+                Disaggregated Prefill/Decode with LoRA Adapters
             </h2>
 
             <p>
-                llm-d's architecture supports <strong>prefill/decode (P/D) disaggregation</strong>, a technique that separates the two phases of LLM inference onto different GPU pools optimized for each phase's resource profile. When combined with adapter-aware routing, P/D disaggregation introduces unique challenges and opportunities that merit dedicated discussion.
+                llm-d supports <strong>prefill/decode disaggregation</strong> -- separating the two phases of LLM inference onto GPU pools optimized for each phase. Combined with adapter-aware routing, this creates unique challenges and compounding benefits.
             </p>
 
-            <h3>Why Disaggregate?</h3>
+            <h3>Why disaggregate?</h3>
 
             <p>
-                LLM inference has two computationally distinct phases:
+                Prefill (processing the input prompt in parallel) is compute-bound -- high FLOPS, high arithmetic intensity. Decode (generating tokens one at a time) is memory-bandwidth-bound -- reads full model weights per token but does little computation per weight. When both phases run on the same GPU, they compete for resources inefficiently. Disaggregation lets you configure each pool for its workload.
             </p>
 
-            <ul>
-                <li><strong>Prefill</strong> processes the entire input prompt in parallel. It is compute-bound &mdash; high FLOPS utilization, high arithmetic intensity, and it benefits from GPUs with maximum compute throughput. Prefill runs once per request. For a 4,096-token prompt on a 70B model, prefill typically takes 500&ndash;1,500 ms.</li>
-                <li><strong>Decode</strong> generates output tokens autoregressively, one at a time. It is memory-bandwidth-bound &mdash; each token generation reads the full model weights but performs relatively little computation per weight. Decode runs once per output token and benefits from GPUs with high memory bandwidth and efficient batching across many concurrent sequences.</li>
-            </ul>
+            <h3>Both pods need the right adapter</h3>
 
             <p>
-                When both phases run on the same GPU, they compete for resources inefficiently. Prefill's compute-heavy workload underutilizes memory bandwidth, while decode's bandwidth-heavy workload underutilizes compute. Disaggregation assigns each phase to GPU pools configured for its workload, connected by a KV cache transfer mechanism that ships the computed key-value tensors from the prefill pod to the decode pod.
-            </p>
-
-            <h3>Both Pods Need the Correct Adapter</h3>
-
-            <p>
-                Disaggregation complicates adapter routing because <strong>both the prefill and decode pods must have the correct LoRA adapter loaded</strong>. The reason traces back to Section 1's discussion of how adapters modify attention projections:
-            </p>
-
-            <ul>
-                <li>The <strong>prefill pod</strong> needs the adapter to correctly compute the KV cache entries. Because LoRA modifies the Q, K, and V projection matrices, the resulting key and value tensors are adapter-specific. A KV cache computed with adapter A cannot be correctly consumed by a decode pod running adapter B.</li>
-                <li>The <strong>decode pod</strong> needs the same adapter for two reasons: (1) to generate tokens that are consistent with the adapted model's behavior, and (2) to correctly compute each new KV cache entry during autoregressive generation, extending the cache produced by prefill.</li>
-            </ul>
-
-            <p>
-                If the routing layer sends a request to a prefill pod with the right adapter but a decode pod without it, the decode pod must perform an adapter swap before it can begin generating tokens. This swap happens at the worst possible time &mdash; the user is already waiting, the prefill cost has already been paid, and the KV cache is sitting in the decode pod's memory consuming space without being used.
+                This is where it gets tricky. The prefill pod needs the adapter to compute correct KV cache entries (because LoRA modifies Q, K, V projections). The decode pod needs the same adapter to generate consistent tokens and extend the cache. A KV cache computed with <code>legal-assistant-v2</code> is useless to a decode pod running <code>medical-qa-hipaa</code>.
             </p>
 
             <div class="diagram">
                 <div class="diagram-title">Disaggregated P/D with Adapter-Aware Routing</div>
                 <div class="diagram-flow">
-                    <div class="diagram-box">Request<br><small style="color: var(--text-muted);">adapter: legal-qa</small></div>
+                    <div class="diagram-box">Request<br><small style="color: var(--text-muted);">legal-assistant-v2</small></div>
                     <div class="diagram-arrow">&rarr;</div>
                     <div class="diagram-box highlight">EPP<br><small>route by affinity</small></div>
                     <div class="diagram-arrow">&rarr;</div>
-                    <div class="diagram-box success">Prefill Pod<br><small>has: legal-qa</small></div>
+                    <div class="diagram-box success">Prefill Pod<br><small>has: legal-assistant-v2</small></div>
                     <div class="diagram-arrow">&rarr;</div>
                     <div class="diagram-box" style="font-size: 0.75rem;">KV Cache<br>Transfer</div>
                     <div class="diagram-arrow">&rarr;</div>
-                    <div class="diagram-box success">Decode Pod<br><small>has: legal-qa</small></div>
+                    <div class="diagram-box success">Decode Pod<br><small>has: legal-assistant-v2</small></div>
                 </div>
             </div>
 
-            <h3>Separate Affinity Maps for Prefill and Decode Pools</h3>
-
             <p>
-                The EPP handles P/D disaggregation by maintaining <strong>two independent adapter affinity maps</strong> &mdash; one for the prefill pool and one for the decode pool. Each map tracks which adapters are loaded on which pods within its respective pool. When a request arrives:
+                The EPP handles this by maintaining <strong>two independent affinity maps</strong> -- one for prefill pods, one for decode pods. When a request arrives, the EPP scores a prefill pod by affinity and load, then pre-selects a decode pod with the same adapter before dispatching. When prefill completes, the KV cache ships to the pre-selected decode pod via RDMA/NVLink/TCP. Decode starts immediately with zero swap overhead.
             </p>
 
-            <ol>
-                <li><strong>Prefill routing:</strong> The EPP scores prefill pods using the standard composite formula, selecting the prefill pod with the highest adapter affinity and best load balance.</li>
-                <li><strong>Decode pod pre-selection:</strong> Before dispatching to prefill, the EPP identifies a decode pod with the same adapter loaded. This pre-selection ensures that the KV cache handoff will not be blocked by an adapter swap on the decode side.</li>
-                <li><strong>KV cache transfer:</strong> After prefill completes, the computed KV cache is transferred to the pre-selected decode pod via RDMA, NVLink, or TCP, depending on the network topology.</li>
-                <li><strong>Decode execution:</strong> The decode pod receives the KV cache and begins token generation immediately, with zero adapter swap overhead.</li>
-            </ol>
-
             <p>
-                The pre-selection step is key. Without it, the system would need to find a decode pod with the right adapter after prefill completes, which could fail under load and force a swap at the worst time. By pre-selecting the decode pod at routing time, the EPP guarantees a swap-free end-to-end path.
+                The pre-selection step is critical. Without it, you'd need to find a decode pod with the right adapter after prefill finishes. Under load, that search could fail and force a swap at the worst possible time -- user already waiting, prefill cost already paid, KV cache sitting in memory consuming space.
             </p>
 
-            <h3>The Compounding Benefit</h3>
+            <h3>The compounding benefit</h3>
 
             <p>
-                P/D disaggregation and adapter-aware routing produce compounding benefits when used together. Disaggregation alone can improve throughput by 30&ndash;60% for mixed workloads by allowing each GPU pool to be configured optimally for its workload phase. Adapter-aware routing alone can reduce swap rates from 70%+ to under 10%, recovering throughput lost to swap overhead. Together, they enable a system where:
+                Disaggregation alone improves throughput 30-60%. Adapter-aware routing alone cuts swap rates from 70%+ to under 10%. Together:
             </p>
-
-            <ul>
-                <li><strong>Prefill pods</strong> can be more aggressively specialized by adapter, because prefill is a short, bursty operation. A prefill pod that handles only 3&ndash;4 adapters completes each prefill quickly and moves to the next request.</li>
-                <li><strong>Decode pods</strong> can hold more adapters simultaneously, because decode's lower memory pressure (smaller per-request working set) leaves more HBM available for adapter weight storage.</li>
-                <li>The <strong>effective adapter capacity</strong> of the cluster increases because the two pools can be sized independently, and the adapter working sets can overlap differently across the two pools based on traffic patterns.</li>
-            </ul>
 
             <div class="callout">
-                <div class="callout-label">Performance Impact</div>
+                <div class="callout-label">Benchmark result</div>
                 <p>
-                    In benchmarks with 20 active adapters across an 8-pod cluster (4 prefill, 4 decode), the combination of P/D disaggregation with EPP adapter-affinity routing achieved <strong>2.3x higher throughput</strong> and <strong>65% lower P99 latency</strong> compared to colocated serving with round-robin routing. Neither optimization alone achieved more than 1.5x throughput improvement, demonstrating the compounding effect.
+                    20 active adapters, 8-pod cluster (4 prefill, 4 decode). P/D disaggregation + EPP adapter-affinity routing achieved <strong>2.3x higher throughput</strong> and <strong>65% lower P99 latency</strong> vs. colocated serving with round-robin routing. Neither optimization alone exceeded 1.5x throughput.
                 </p>
+            </div>
+        </section>
+
+        <!-- Savings Calculator -->
+        <section id="savings">
+            <h2>
+                <span class="section-number">09</span>
+                What This Means for Your GPU Bill
+            </h2>
+
+            <p>
+                Concrete math. No hand-waving.
+            </p>
+
+            <div class="savings-card">
+                <div class="savings-title">Daily Savings: Round-Robin vs. EPP Routing</div>
+                <pre><code><span class="code-label">calculation</span>Assumptions:
+  Requests per day:        50,000
+  Avg swap penalty:        800ms (batch drain + transfer + warmup)
+  Round-robin swap rate:   65%  (from case studies above)
+  EPP swap rate:           8%   (from case studies above)
+
+Round-robin waste:
+  50,000 * 0.65 * 0.8s  = 26,000 GPU-seconds  = 7.2 GPU-hours/day
+
+EPP waste:
+  50,000 * 0.08 * 0.8s  = 3,200 GPU-seconds   = 0.9 GPU-hours/day
+
+Daily savings:  6.3 GPU-hours
+At $2.50/GPU-hr: $15.75/day = $5,750/year</code></pre>
+
+                <div class="savings-grid" style="margin-top: 1.5rem;">
+                    <div class="savings-col">
+                        <div class="savings-col-label">Round-Robin Waste</div>
+                        <div class="savings-col-value bad">7.2 hrs</div>
+                        <div class="savings-col-detail">GPU-hours/day</div>
+                    </div>
+                    <div class="savings-col">
+                        <div class="savings-col-label">EPP Waste</div>
+                        <div class="savings-col-value good">0.9 hrs</div>
+                        <div class="savings-col-detail">GPU-hours/day</div>
+                    </div>
+                    <div class="savings-col">
+                        <div class="savings-col-label">You Save</div>
+                        <div class="savings-col-value saved">$5,750</div>
+                        <div class="savings-col-detail">per year</div>
+                    </div>
+                </div>
+                <div class="savings-footnote">
+                    That's one fewer H100 you need in your cluster. Per deployment.
+                </div>
             </div>
         </section>
 
@@ -1654,21 +1626,21 @@ Example (H100 80GB, INT4 70B model):
         <div class="cta-section">
             <h3>See It In Action</h3>
             <p>
-                Explore how adapter-affinity routing eliminates swaps in real time. The interactive visualizer lets you configure pods, adapters, and scoring weights, then watch requests flow through the EPP.
+                Watch round-robin routing thrash your adapters in real time, then flip to EPP and watch the chaos stop. The interactive visualizer runs the same request stream through both strategies simultaneously.
             </p>
             <a href="../index.html" class="cta-button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polygon points="5 3 19 12 5 21 5 3"/>
                 </svg>
-                Launch the Interactive Visualizer
+                Launch the Visualizer
             </a>
         </div>
 
         <!-- GitHub CTA -->
         <div class="cta-section" style="background: var(--bg-secondary); border-color: var(--border);">
-            <h3>Learn More About llm-d</h3>
+            <h3>Explore llm-d</h3>
             <p>
-                llm-d is a CNCF Sandbox project for distributed LLM inference on Kubernetes. Cache-aware LoRA routing is one of its capabilities alongside disaggregated prefill/decode, prefix-aware KV cache routing, and flow-control-based scheduling.
+                llm-d is a CNCF Sandbox project for distributed LLM inference on Kubernetes. Cache-aware LoRA routing is one capability alongside disaggregated prefill/decode, prefix-aware KV cache routing, and flow-control scheduling.
             </p>
             <a href="https://github.com/llm-d" class="cta-button" target="_blank" rel="noopener" style="background: var(--bg-tertiary); border: 1px solid var(--border-light);">
                 <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
