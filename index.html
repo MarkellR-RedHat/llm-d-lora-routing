@@ -907,6 +907,383 @@ input[type="text"]:focus, input[type="number"]:focus {
 .info-box strong { color: var(--text-primary); }
 .info-box .close-btn { margin-top: 1rem; }
 
+/* ==================== ADAPTER AFFINITY HEATMAP ==================== */
+.heatmap-section {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+}
+.heatmap-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.heatmap-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.heatmap-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  overflow-x: auto;
+}
+.heatmap-panel-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+.heatmap-panel-title.rr { color: var(--danger); }
+.heatmap-panel-title.smart { color: var(--success); }
+.heatmap-grid {
+  display: grid;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+}
+.heatmap-header-cell {
+  text-align: center;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0.15rem 0.1rem;
+  font-size: 0.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60px;
+}
+.heatmap-row-label {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.55rem;
+  display: flex;
+  align-items: center;
+  padding-right: 0.3rem;
+  white-space: nowrap;
+}
+.heatmap-cell {
+  width: 100%;
+  min-width: 28px;
+  height: 22px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.48rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.7);
+  transition: background 0.3s;
+}
+.heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+}
+.heatmap-legend-bar {
+  width: 100px;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1e293b, #854d0e, #a16207, #65a30d, #22c55e);
+}
+
+/* ==================== SWAP PENALTY VISUALIZATION ==================== */
+.swap-penalty-section {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+}
+.swap-penalty-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.swap-penalty-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.swap-penalty-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+.swap-penalty-panel-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.35rem;
+}
+.swap-penalty-panel-title.rr { color: var(--danger); }
+.swap-penalty-panel-title.smart { color: var(--success); }
+.swap-bar-container {
+  position: relative;
+  height: 28px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+}
+.swap-phase {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.85);
+  transition: width 0.4s ease;
+  overflow: hidden;
+  white-space: nowrap;
+  min-width: 0;
+}
+.swap-phase-drain { background: #dc2626; }
+.swap-phase-dealloc { background: #ea580c; }
+.swap-phase-transfer { background: #d97706; }
+.swap-phase-init { background: #65a30d; }
+.swap-phase-warmup { background: #0891b2; }
+.swap-penalty-meta {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  font-size: 0.55rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  flex-wrap: wrap;
+}
+.swap-penalty-meta span { display: flex; align-items: center; gap: 0.2rem; }
+.swap-phase-dot {
+  width: 8px; height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.swap-no-data {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 0.5rem 0;
+  text-align: center;
+}
+
+/* ==================== ENHANCED SAVINGS CALCULATOR (TABS) ==================== */
+.savings-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 0.6rem;
+}
+.savings-tab {
+  font-family: var(--font-sans);
+  font-size: 0.65rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--border);
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.savings-tab:first-child { border-radius: 6px 0 0 6px; }
+.savings-tab:last-child { border-radius: 0 6px 6px 0; }
+.savings-tab.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.savings-tab-content { display: none; }
+.savings-tab-content.active { display: block; }
+.lora-comparison-grid {
+  display: grid;
+  grid-template-columns: auto 1fr 1fr;
+  gap: 0.65rem;
+  align-items: start;
+}
+.lora-comp-inputs {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.lora-comp-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.65rem 0.85rem;
+}
+.lora-comp-card-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.4rem;
+}
+.lora-comp-card-title.bad { color: var(--danger); }
+.lora-comp-card-title.good { color: var(--success); }
+.lora-comp-value {
+  font-family: var(--font-mono);
+  font-size: 1.3rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.15rem;
+}
+.lora-comp-value.bad { color: var(--danger); }
+.lora-comp-value.good { color: var(--success); }
+.lora-comp-detail {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+.lora-savings-banner {
+  background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));
+  border: 1px solid rgba(16,185,129,0.3);
+  border-radius: 10px;
+  padding: 0.85rem;
+  text-align: center;
+  grid-column: span 3;
+}
+.lora-savings-pct {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: var(--success);
+  line-height: 1;
+}
+.lora-savings-label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 0.3rem;
+}
+
+/* ==================== MULTI-TENANT CONFIG BUILDER ==================== */
+.config-builder {
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.5rem;
+}
+.config-builder-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.config-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.85rem;
+  align-items: start;
+}
+.config-inputs {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 280px;
+}
+.config-input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.config-input-row label {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  white-space: nowrap;
+  min-width: 140px;
+}
+.config-input-row input[type="range"] { width: 100px; }
+.config-input-val {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--accent);
+  font-weight: 700;
+  min-width: 32px;
+  text-align: right;
+}
+.config-results {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.55rem;
+}
+.config-result-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+}
+.config-result-label {
+  font-size: 0.58rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.config-result-value {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--accent);
+  line-height: 1;
+}
+.config-result-detail {
+  font-size: 0.52rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  margin-top: 0.15rem;
+}
+.config-summary-card {
+  grid-column: span 3;
+  background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(59,130,246,0.02));
+  border: 1px solid rgba(59,130,246,0.25);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  text-align: center;
+}
+.config-summary-text {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.config-summary-text strong {
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+
 /* ==================== SCROLLBAR ==================== */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -918,6 +1295,11 @@ input[type="text"]:focus, input[type="number"]:focus {
   .metrics-grid { grid-template-columns: repeat(2, 1fr); }
   .savings-grid { grid-template-columns: 1fr 1fr; }
   .savings-highlight { grid-column: span 2; }
+  .lora-comparison-grid { grid-template-columns: 1fr 1fr; }
+  .lora-savings-banner { grid-column: span 2; }
+  .config-grid { grid-template-columns: 1fr; }
+  .config-results { grid-template-columns: repeat(2, 1fr); }
+  .config-summary-card { grid-column: span 2; }
 }
 @media (max-width: 768px) {
   .canvas-section { grid-template-columns: 1fr; min-height: 360px; }
@@ -929,6 +1311,12 @@ input[type="text"]:focus, input[type="number"]:focus {
   .savings-grid { grid-template-columns: 1fr; }
   .savings-highlight { grid-column: span 1; }
   .war-story-callout { margin: 0 1rem; }
+  .heatmap-container { grid-template-columns: 1fr; }
+  .swap-penalty-container { grid-template-columns: 1fr; }
+  .lora-comparison-grid { grid-template-columns: 1fr; }
+  .lora-savings-banner { grid-column: span 1; }
+  .config-results { grid-template-columns: 1fr; }
+  .config-summary-card { grid-column: span 1; }
 }
 </style>
 </head>
@@ -1063,6 +1451,46 @@ input[type="text"]:focus, input[type="number"]:focus {
   </div>
 </div>
 
+<!-- Adapter Affinity Heatmap -->
+<div class="heatmap-section">
+  <div class="heatmap-title"><span style="color:var(--success);font-size:0.9rem">&#9638;</span> Adapter Affinity Heatmap</div>
+  <div class="heatmap-container">
+    <div class="heatmap-panel">
+      <div class="heatmap-panel-title rr">Round-Robin</div>
+      <div id="rrHeatmap"></div>
+      <div class="heatmap-legend">
+        <span>Cold</span>
+        <div class="heatmap-legend-bar"></div>
+        <span>Hot</span>
+      </div>
+    </div>
+    <div class="heatmap-panel">
+      <div class="heatmap-panel-title smart">EPP Smart Routing</div>
+      <div id="smartHeatmap"></div>
+      <div class="heatmap-legend">
+        <span>Cold</span>
+        <div class="heatmap-legend-bar"></div>
+        <span>Hot</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Last Swap Penalty Breakdown -->
+<div class="swap-penalty-section">
+  <div class="swap-penalty-title"><span style="color:var(--warning);font-size:0.9rem">&#9888;</span> Last Swap Penalty Breakdown</div>
+  <div class="swap-penalty-container">
+    <div class="swap-penalty-panel">
+      <div class="swap-penalty-panel-title rr">Round-Robin</div>
+      <div id="rrSwapBreakdown"><div class="swap-no-data">No swap yet</div></div>
+    </div>
+    <div class="swap-penalty-panel">
+      <div class="swap-penalty-panel-title smart">EPP Smart Routing</div>
+      <div id="smartSwapBreakdown"><div class="swap-no-data">No swap yet</div></div>
+    </div>
+  </div>
+</div>
+
 <!-- Sparkline Metrics Dashboard -->
 <div class="metrics-dashboard">
   <div class="metrics-header">
@@ -1075,49 +1503,137 @@ input[type="text"]:focus, input[type="number"]:focus {
   <div class="metrics-grid" id="metricsGrid"></div>
 </div>
 
-<!-- Daily Savings Calculator -->
+<!-- Cost Savings Calculator (Enhanced) -->
 <div class="savings-calculator">
-  <div class="savings-title">Daily Savings Calculator</div>
-  <div class="savings-grid">
-    <div class="savings-inputs">
-      <div class="savings-input-row">
-        <label>Requests per day</label>
-        <input type="number" id="savingsReqPerDay" value="50000" min="1000" max="10000000" step="1000" oninput="updateSavingsCalc()">
+  <div class="savings-title"><span style="font-size:0.9rem">&#128176;</span> Cost Savings Calculator</div>
+  <div class="savings-tabs">
+    <button class="savings-tab active" onclick="switchSavingsTab('swap', this)">Swap Cost</button>
+    <button class="savings-tab" onclick="switchSavingsTab('lora', this)">LoRA vs Separate Deployments</button>
+  </div>
+
+  <!-- Tab 1: Swap Cost (existing) -->
+  <div class="savings-tab-content active" id="savingsTabSwap">
+    <div class="savings-grid">
+      <div class="savings-inputs">
+        <div class="savings-input-row">
+          <label>Requests per day</label>
+          <input type="number" id="savingsReqPerDay" value="50000" min="1000" max="10000000" step="1000" oninput="updateSavingsCalc()">
+        </div>
+        <div class="savings-input-row">
+          <label>Avg swap penalty ms</label>
+          <input type="number" id="savingsSwapPenalty" value="800" min="100" max="5000" step="50" oninput="updateSavingsCalc()">
+        </div>
+        <div class="savings-input-row">
+          <label>GPU-hour cost ($)</label>
+          <input type="number" id="savingsGpuCost" value="2.50" min="0.10" max="50" step="0.10" oninput="updateSavingsCalc()">
+        </div>
       </div>
-      <div class="savings-input-row">
-        <label>Avg swap penalty ms</label>
-        <input type="number" id="savingsSwapPenalty" value="800" min="100" max="5000" step="50" oninput="updateSavingsCalc()">
+      <div class="savings-results">
+        <div class="savings-result-row">
+          <span class="savings-result-label">RR swap rate (live)</span>
+          <span class="savings-result-value rr-val" id="savingsRrSwapRate">0%</span>
+        </div>
+        <div class="savings-result-row">
+          <span class="savings-result-label">EPP swap rate (live)</span>
+          <span class="savings-result-value epp-val" id="savingsEppSwapRate">0%</span>
+        </div>
+        <div style="border-top:1px solid var(--border);margin:0.2rem 0"></div>
+        <div class="savings-result-row">
+          <span class="savings-result-label">GPU-hours wasted (RR)</span>
+          <span class="savings-result-value rr-val" id="savingsRrGpuHours">0.0</span>
+        </div>
+        <div class="savings-result-row">
+          <span class="savings-result-label">GPU-hours wasted (EPP)</span>
+          <span class="savings-result-value epp-val" id="savingsEppGpuHours">0.0</span>
+        </div>
       </div>
-      <div class="savings-input-row">
-        <label>GPU-hour cost ($)</label>
-        <input type="number" id="savingsGpuCost" value="2.50" min="0.10" max="50" step="0.10" oninput="updateSavingsCalc()">
+      <div class="savings-highlight">
+        <span class="savings-big-label">GPU-hours saved per day</span>
+        <span class="savings-big-number" id="savingsGpuHoursSaved">0.0</span>
+        <span class="savings-big-label">Estimated cost savings</span>
+        <span class="savings-cost" id="savingsCostSaved">$0.00</span>
+        <span class="savings-big-label" style="font-size:0.5rem;margin-top:0.15rem;color:var(--text-muted)">/day</span>
       </div>
     </div>
-    <div class="savings-results">
-      <div class="savings-result-row">
-        <span class="savings-result-label">RR swap rate (live)</span>
-        <span class="savings-result-value rr-val" id="savingsRrSwapRate">0%</span>
+  </div>
+
+  <!-- Tab 2: LoRA vs Separate Deployments -->
+  <div class="savings-tab-content" id="savingsTabLora">
+    <div class="lora-comparison-grid">
+      <div class="lora-comp-inputs">
+        <div class="savings-input-row">
+          <label>Base models</label>
+          <input type="number" id="loraBaseModels" value="1" min="1" max="10" step="1" oninput="updateLoraComparison()">
+        </div>
+        <div class="savings-input-row">
+          <label>LoRA adapters</label>
+          <input type="number" id="loraAdapterCount" value="12" min="1" max="200" step="1" oninput="updateLoraComparison()">
+        </div>
+        <div class="savings-input-row">
+          <label>Req/min per adapter</label>
+          <input type="number" id="loraReqPerMin" value="200" min="10" max="10000" step="10" oninput="updateLoraComparison()">
+        </div>
+        <div class="savings-input-row">
+          <label>GPU cost ($/hr)</label>
+          <input type="number" id="loraGpuCostHr" value="2.50" min="0.10" max="100" step="0.10" oninput="updateLoraComparison()">
+        </div>
       </div>
-      <div class="savings-result-row">
-        <span class="savings-result-label">EPP swap rate (live)</span>
-        <span class="savings-result-value epp-val" id="savingsEppSwapRate">0%</span>
+      <div class="lora-comp-card">
+        <div class="lora-comp-card-title bad">Separate Deployments</div>
+        <div class="lora-comp-value bad" id="loraSeparateCost">$0</div>
+        <div class="lora-comp-detail" id="loraSeparateDetail">0 GPU instances</div>
+        <div class="lora-comp-detail" style="margin-top:0.3rem;color:var(--text-secondary);font-size:0.56rem">Each adapter = dedicated GPU instance</div>
       </div>
-      <div style="border-top:1px solid var(--border);margin:0.2rem 0"></div>
-      <div class="savings-result-row">
-        <span class="savings-result-label">GPU-hours wasted (RR)</span>
-        <span class="savings-result-value rr-val" id="savingsRrGpuHours">0.0</span>
+      <div class="lora-comp-card">
+        <div class="lora-comp-card-title good">Shared Base + LoRA Routing</div>
+        <div class="lora-comp-value good" id="loraSharedCost">$0</div>
+        <div class="lora-comp-detail" id="loraSharedDetail">0 GPU instances</div>
+        <div class="lora-comp-detail" style="margin-top:0.3rem;color:var(--text-secondary);font-size:0.56rem">Shared base model, hot-swap adapters</div>
       </div>
-      <div class="savings-result-row">
-        <span class="savings-result-label">GPU-hours wasted (EPP)</span>
-        <span class="savings-result-value epp-val" id="savingsEppGpuHours">0.0</span>
+      <div class="lora-savings-banner">
+        <div class="lora-savings-pct" id="loraSavingsPct">0%</div>
+        <div class="lora-savings-label">You save with LoRA routing</div>
       </div>
     </div>
-    <div class="savings-highlight">
-      <span class="savings-big-label">GPU-hours saved per day</span>
-      <span class="savings-big-number" id="savingsGpuHoursSaved">0.0</span>
-      <span class="savings-big-label">Estimated cost savings</span>
-      <span class="savings-cost" id="savingsCostSaved">$0.00</span>
-      <span class="savings-big-label" style="font-size:0.5rem;margin-top:0.15rem;color:var(--text-muted)">/day</span>
+  </div>
+</div>
+
+<!-- Multi-Tenant Config Builder -->
+<div class="config-builder">
+  <div class="config-builder-title"><span style="font-size:0.9rem">&#9881;</span> Design Your Multi-Tenant Setup</div>
+  <div class="config-grid">
+    <div class="config-inputs">
+      <div class="config-input-row">
+        <label>Number of tenants</label>
+        <input type="range" id="cfgTenants" min="2" max="100" value="8" oninput="updateConfigBuilder()">
+        <span class="config-input-val" id="cfgTenantsVal">8</span>
+      </div>
+      <div class="config-input-row">
+        <label>Adapters per tenant</label>
+        <input type="range" id="cfgAdaptersPerTenant" min="1" max="5" value="2" oninput="updateConfigBuilder()">
+        <span class="config-input-val" id="cfgAdaptersPerTenantVal">2</span>
+      </div>
+      <div class="config-input-row">
+        <label>Base model size</label>
+        <select id="cfgModelSize" onchange="updateConfigBuilder()">
+          <option value="7">7B</option>
+          <option value="13">13B</option>
+          <option value="70" selected>70B</option>
+          <option value="405">405B</option>
+        </select>
+      </div>
+      <div class="config-input-row">
+        <label>GPU type</label>
+        <select id="cfgGpuType" onchange="updateConfigBuilder()">
+          <option value="a100-40">A100-40GB</option>
+          <option value="a100-80">A100-80GB</option>
+          <option value="h100-80" selected>H100-80GB</option>
+          <option value="h200-141">H200-141GB</option>
+        </select>
+      </div>
+    </div>
+    <div class="config-results" id="configResults">
+      <!-- Populated by JS -->
     </div>
   </div>
 </div>
@@ -1136,7 +1652,7 @@ input[type="text"]:focus, input[type="number"]:focus {
 <!-- Footer -->
 <footer class="footer">
   Author: Markell Rawls &middot;
-  llm-d &mdash; Distributed LLM Inference on Kubernetes &middot; CNCF Sandbox Project &middot;
+  llm-d -- Distributed LLM Inference on Kubernetes &middot; CNCF Sandbox Project &middot;
   <a href="blog/index.html">Read the deep dive &rarr;</a>
 </footer>
 
@@ -1146,11 +1662,11 @@ input[type="text"]:focus, input[type="number"]:focus {
     <h3>How llm-d Cache-Aware LoRA Routing Works</h3>
     <p><strong>The Problem:</strong> In multi-tenant LLM serving, different users need different LoRA adapters (fine-tuned model layers). Loading a new adapter onto a GPU pod takes 500-2000ms and blocks the pod during the swap. Naive round-robin routing ignores which adapters are already loaded, causing excessive and unnecessary swaps.</p>
     <p><strong>The Solution:</strong> llm-d's Endpoint Picker (EPP) scores each candidate pod using multiple signals before routing:</p>
-    <p><strong>Adapter Affinity (50%)</strong> &mdash; Does this pod already have the requested adapter loaded? Routing to a pod that already has the adapter avoids swap overhead entirely.</p>
-    <p><strong>KV Cache Match (20%)</strong> &mdash; Does this pod have relevant cached key-value pairs from prior requests? Reusing KV cache reduces time-to-first-token.</p>
-    <p><strong>Load / Queue Depth (15%)</strong> &mdash; How busy is this pod? The EPP avoids overloading pods that are already saturated.</p>
-    <p><strong>Health / GPU Utilization (15%)</strong> &mdash; What is the pod's current resource availability? Healthier pods with more headroom are preferred.</p>
-    <p><strong>Composite Score</strong> &mdash; The EPP combines these weighted signals: <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent)">adapter_affinity(0.50) x cache_match(0.20) x 1/load(0.15) x gpu_health(0.15)</code> to pick the pod that minimizes total latency while maximizing resource reuse.</p>
+    <p><strong>Adapter Affinity (50%)</strong> -- Does this pod already have the requested adapter loaded? Routing to a pod that already has the adapter avoids swap overhead entirely.</p>
+    <p><strong>KV Cache Match (20%)</strong> -- Does this pod have relevant cached key-value pairs from prior requests? Reusing KV cache reduces time-to-first-token.</p>
+    <p><strong>Load / Queue Depth (15%)</strong> -- How busy is this pod? The EPP avoids overloading pods that are already saturated.</p>
+    <p><strong>Health / GPU Utilization (15%)</strong> -- What is the pod's current resource availability? Healthier pods with more headroom are preferred.</p>
+    <p><strong>Composite Score</strong> -- The EPP combines these weighted signals: <code style="font-family:var(--font-mono);font-size:0.75rem;color:var(--accent)">adapter_affinity(0.50) x cache_match(0.20) x 1/load(0.15) x gpu_health(0.15)</code> to pick the pod that minimizes total latency while maximizing resource reuse.</p>
     <p>This visualizer runs the <strong>same request stream</strong> through both strategies simultaneously, so you can see the difference in adapter swaps, latency, and throughput in real time.</p>
     <button class="btn primary close-btn" onclick="toggleInfo()">Got it</button>
   </div>
@@ -1829,10 +2345,71 @@ function renderCanvas(canvasId, wrapId, state, podPositions, time) {
     }
   });
 
+  // Draw pod flashes (red flash on cache miss)
+  if (state.podFlashes) {
+    state.podFlashes = state.podFlashes.filter(flash => {
+      const elapsed = time - flash.startTime;
+      if (elapsed > 0.4) return false;
+      const alpha = (1 - elapsed / 0.4) * 0.35;
+      if (flash.podIdx < podPositions.length) {
+        const fp = podPositions[flash.podIdx];
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const grad = ctx.createRadialGradient(fp.x, fp.y, 0, fp.x, fp.y, HEX_RADIUS * 1.3);
+        grad.addColorStop(0, flash.color + '88');
+        grad.addColorStop(1, flash.color + '00');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(fp.x, fp.y, HEX_RADIUS * 1.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+      return true;
+    });
+  }
+
   // Draw particles
   state.particles.forEach(p => {
     drawParticle(ctx, p, time);
   });
+
+  // Draw burst particles (cache hit/miss sparkles)
+  if (state.burstParticles) {
+    state.burstParticles.forEach(bp => {
+      ctx.save();
+      ctx.globalAlpha = bp.alpha;
+      if (bp.isSparkle) {
+        // Sparkle effect for hits: draw a 4-pointed star
+        ctx.fillStyle = bp.color;
+        ctx.shadowColor = bp.color;
+        ctx.shadowBlur = 6;
+        const sz = bp.radius;
+        ctx.beginPath();
+        for (let si = 0; si < 4; si++) {
+          const a = (si / 4) * Math.PI * 2 + time * 4;
+          ctx.moveTo(bp.x, bp.y);
+          ctx.lineTo(bp.x + Math.cos(a) * sz * 2, bp.y + Math.sin(a) * sz * 2);
+        }
+        ctx.stroke();
+        ctx.strokeStyle = bp.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        // Center dot
+        ctx.beginPath();
+        ctx.arc(bp.x, bp.y, sz * 0.6, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // Simple circle for misses
+        ctx.fillStyle = bp.color;
+        ctx.shadowColor = bp.color;
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(bp.x, bp.y, bp.radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    });
+  }
 
   // Draw swap penalty animations
   state.swapAnimations = state.swapAnimations.filter(anim => drawSwapPenalty(ctx, anim, time));
@@ -1917,6 +2494,7 @@ function processRoute(state, podIdx, adapterId, podPositions) {
   const hadAdapter = pod.adapters.includes(adapterId);
   let latency = BASE_LATENCY_MS + Math.random() * 60;
   let swapPenalty = 0;
+  const adapterDef = ADAPTER_DEFS.find(a => a.id === adapterId) || { name: adapterId, color: '#3b82f6' };
 
   if (!hadAdapter) {
     state.totalSwaps++;
@@ -1948,9 +2526,37 @@ function processRoute(state, podIdx, adapterId, podPositions) {
         startTime: performance.now() / 1000,
       });
     }
+
+    // Track last swap for penalty breakdown
+    const swapRecord = {
+      time: performance.now() / 1000,
+      penaltyMs: swapPenalty,
+      podName: pod.name,
+      adapterName: adapterDef.name,
+      adapterColor: adapterDef.color,
+    };
+    if (state.mode === 'rr') lastRRSwap = swapRecord;
+    else lastSmartSwap = swapRecord;
+
+    // Spawn burst particles for cache MISS (red)
+    if (podIdx < podPositions.length) {
+      createBurstParticles(state, podPositions[podIdx], '#ef4444', false);
+      // Red flash on pod
+      state.podFlashes = state.podFlashes || [];
+      state.podFlashes.push({
+        podIdx: podIdx,
+        startTime: performance.now() / 1000,
+        color: '#ef4444',
+      });
+    }
   } else {
     state.cacheHits++;
     latency -= (pod.kvCache[adapterId] || 0) * 40;
+
+    // Spawn burst particles for cache HIT (green)
+    if (podIdx < podPositions.length) {
+      createBurstParticles(state, podPositions[podIdx], '#22c55e', true);
+    }
   }
 
   pod.kvCache[adapterId] = Math.min(1, (pod.kvCache[adapterId] || 0) + 0.18);
@@ -1966,6 +2572,30 @@ function processRoute(state, podIdx, adapterId, podPositions) {
   if (state.latencies.length > 100) state.latencies.shift();
 
   return { hadAdapter, latency, podIdx, swapPenalty };
+}
+
+// ================================================================
+// BURST PARTICLE SYSTEM (CACHE HIT/MISS)
+// ================================================================
+function createBurstParticles(state, pos, color, isHit) {
+  if (!state.burstParticles) state.burstParticles = [];
+  const count = 3 + Math.floor(Math.random() * 3); // 3-5 particles
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 40 + Math.random() * 60;
+    state.burstParticles.push({
+      x: pos.x,
+      y: pos.y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      radius: 2 + Math.random() * 1.5,
+      color: color,
+      alpha: 1,
+      life: 0,
+      maxLife: 0.5 + Math.random() * 0.15, // ~0.5 seconds
+      isSparkle: isHit,
+    });
+  }
 }
 
 // ================================================================
@@ -2202,6 +2832,18 @@ function renderMetrics() {
 // ================================================================
 // SAVINGS CALCULATOR
 // ================================================================
+function switchSavingsTab(tab, btn) {
+  document.querySelectorAll('.savings-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.savings-tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab === 'swap') {
+    document.getElementById('savingsTabSwap').classList.add('active');
+  } else {
+    document.getElementById('savingsTabLora').classList.add('active');
+    updateLoraComparison();
+  }
+}
+
 function updateSavingsCalc() {
   const reqPerDay = parseInt(document.getElementById('savingsReqPerDay').value) || 50000;
   const swapPenaltyMs = parseInt(document.getElementById('savingsSwapPenalty').value) || 800;
@@ -2222,6 +2864,270 @@ function updateSavingsCalc() {
   document.getElementById('savingsEppGpuHours').textContent = eppGpuHours.toFixed(1);
   document.getElementById('savingsGpuHoursSaved').textContent = savedGpuHours.toFixed(1);
   document.getElementById('savingsCostSaved').textContent = '$' + savedCost.toFixed(2);
+}
+
+// ================================================================
+// LORA vs SEPARATE DEPLOYMENTS COMPARISON
+// ================================================================
+function updateLoraComparison() {
+  const baseModels = parseInt(document.getElementById('loraBaseModels').value) || 1;
+  const adapterCount = parseInt(document.getElementById('loraAdapterCount').value) || 12;
+  const reqPerMin = parseInt(document.getElementById('loraReqPerMin').value) || 200;
+  const gpuCostHr = parseFloat(document.getElementById('loraGpuCostHr').value) || 2.50;
+
+  // Separate: each adapter needs its own GPU instance
+  const separateInstances = adapterCount * baseModels;
+  const separateMonthlyCost = separateInstances * gpuCostHr * 24 * 30;
+
+  // Shared: total requests across all adapters, estimate max ~600 req/min per GPU
+  const maxReqPerGpu = 600;
+  const totalReqPerMin = adapterCount * reqPerMin;
+  const sharedInstances = Math.max(baseModels, Math.ceil(totalReqPerMin / maxReqPerGpu));
+  const sharedMonthlyCost = sharedInstances * gpuCostHr * 24 * 30;
+
+  const savingsPct = separateMonthlyCost > 0
+    ? Math.round(((separateMonthlyCost - sharedMonthlyCost) / separateMonthlyCost) * 100)
+    : 0;
+
+  function formatCost(val) {
+    if (val >= 1000000) return '$' + (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return '$' + (val / 1000).toFixed(1) + 'K';
+    return '$' + val.toFixed(0);
+  }
+
+  document.getElementById('loraSeparateCost').textContent = formatCost(separateMonthlyCost) + '/mo';
+  document.getElementById('loraSeparateDetail').textContent = separateInstances + ' GPU instances';
+  document.getElementById('loraSharedCost').textContent = formatCost(sharedMonthlyCost) + '/mo';
+  document.getElementById('loraSharedDetail').textContent = sharedInstances + ' GPU instances';
+  document.getElementById('loraSavingsPct').textContent = savingsPct + '%';
+}
+
+// ================================================================
+// ADAPTER AFFINITY HEATMAP
+// ================================================================
+function renderHeatmap(containerId, state) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const pods = state.pods;
+  const adapters = ADAPTER_DEFS.filter(a => enabledAdapters.has(a.id));
+  if (adapters.length === 0 || pods.length === 0) {
+    container.innerHTML = '<div style="font-size:0.6rem;color:var(--text-muted)">No data</div>';
+    return;
+  }
+
+  // Determine column count: 1 for row label + N for adapters
+  const colTemplate = '65px ' + adapters.map(() => '1fr').join(' ');
+
+  let html = '<div class="heatmap-grid" style="grid-template-columns:' + colTemplate + '">';
+
+  // Header row
+  html += '<div></div>'; // empty corner
+  adapters.forEach(ad => {
+    const shortName = ad.name.length > 10 ? ad.name.slice(0, 9) + '..' : ad.name;
+    html += '<div class="heatmap-header-cell" style="color:' + ad.color + '">' + shortName + '</div>';
+  });
+
+  // Data rows
+  pods.forEach(pod => {
+    html += '<div class="heatmap-row-label">' + pod.name + '</div>';
+    adapters.forEach(ad => {
+      const hasAdapter = pod.adapters.includes(ad.id);
+      const kvWarmth = pod.kvCache[ad.id] || 0;
+
+      // Compute "cache warmth": 0 = cold (not loaded), 0.5 = warm (loaded, low cache), 1.0 = hot (loaded, high cache)
+      let warmth = 0;
+      if (hasAdapter) {
+        warmth = 0.4 + kvWarmth * 0.6; // 0.4 minimum when loaded, up to 1.0
+      } else {
+        warmth = kvWarmth * 0.2; // residual warmth fading
+      }
+
+      // Map warmth to color
+      let bgColor;
+      if (warmth < 0.1) {
+        bgColor = '#1e293b'; // cold gray
+      } else if (warmth < 0.35) {
+        bgColor = '#854d0e'; // dark amber
+      } else if (warmth < 0.55) {
+        bgColor = '#a16207'; // yellow
+      } else if (warmth < 0.75) {
+        bgColor = '#65a30d'; // light green
+      } else {
+        bgColor = '#16a34a'; // bright green
+      }
+
+      const label = hasAdapter ? (kvWarmth > 0.5 ? 'HOT' : 'ON') : '';
+      html += '<div class="heatmap-cell" style="background:' + bgColor + '">' + label + '</div>';
+    });
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ================================================================
+// SWAP PENALTY BREAKDOWN VISUALIZATION
+// ================================================================
+// Track last swap info per side
+let lastRRSwap = null;
+let lastSmartSwap = null;
+
+const SWAP_PHASES = [
+  { name: 'Batch Drain', cls: 'swap-phase-drain', pct: 0.25 },
+  { name: 'Wt Dealloc', cls: 'swap-phase-dealloc', pct: 0.15 },
+  { name: 'Wt Transfer', cls: 'swap-phase-transfer', pct: 0.30 },
+  { name: 'Init', cls: 'swap-phase-init', pct: 0.15 },
+  { name: 'Warmup', cls: 'swap-phase-warmup', pct: 0.15 },
+];
+
+function renderSwapBreakdown(containerId, swapInfo) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  if (!swapInfo) {
+    container.innerHTML = '<div class="swap-no-data">No swap yet</div>';
+    return;
+  }
+
+  const now = performance.now() / 1000;
+  const elapsed = now - swapInfo.time;
+  const animDuration = 2.0; // seconds to animate the bar filling
+  const fadeDuration = 8.0; // seconds before it fully fades
+  const fillProgress = Math.min(1, elapsed / animDuration);
+  const fadeAlpha = elapsed > animDuration ? Math.max(0.3, 1 - (elapsed - animDuration) / fadeDuration) : 1;
+
+  const totalMs = swapInfo.penaltyMs;
+
+  let barsHtml = '<div class="swap-bar-container" style="opacity:' + fadeAlpha + '">';
+  let cumulativePct = 0;
+  SWAP_PHASES.forEach(phase => {
+    const phasePct = phase.pct * 100;
+    const phaseMs = Math.round(totalMs * phase.pct);
+    // Animate each phase sequentially
+    const phaseStart = cumulativePct / 100;
+    const phaseEnd = (cumulativePct + phasePct) / 100;
+    let displayWidth = 0;
+    if (fillProgress >= phaseEnd) {
+      displayWidth = phasePct;
+    } else if (fillProgress > phaseStart) {
+      displayWidth = ((fillProgress - phaseStart) / (phaseEnd - phaseStart)) * phasePct;
+    }
+    barsHtml += '<div class="swap-phase ' + phase.cls + '" style="width:' + displayWidth + '%">'
+      + (displayWidth > 8 ? phase.name + ' ' + phaseMs + 'ms' : '')
+      + '</div>';
+    cumulativePct += phasePct;
+  });
+  barsHtml += '</div>';
+
+  let metaHtml = '<div class="swap-penalty-meta" style="opacity:' + fadeAlpha + '">';
+  metaHtml += '<span>Total: <strong style="color:var(--warning)">' + Math.round(totalMs) + 'ms</strong></span>';
+  metaHtml += '<span>Pod: <strong style="color:var(--accent)">' + swapInfo.podName + '</strong></span>';
+  metaHtml += '<span>Adapter: <strong style="color:' + swapInfo.adapterColor + '">' + swapInfo.adapterName + '</strong></span>';
+  SWAP_PHASES.forEach(phase => {
+    metaHtml += '<span><span class="swap-phase-dot ' + phase.cls + '"></span> ' + phase.name + '</span>';
+  });
+  metaHtml += '</div>';
+
+  container.innerHTML = barsHtml + metaHtml;
+}
+
+// ================================================================
+// MULTI-TENANT CONFIG BUILDER
+// ================================================================
+const GPU_SPECS = {
+  'a100-40': { name: 'A100-40GB', memGB: 40, costHr: 1.50, maxAdapters: 6 },
+  'a100-80': { name: 'A100-80GB', memGB: 80, costHr: 2.50, maxAdapters: 12 },
+  'h100-80': { name: 'H100-80GB', memGB: 80, costHr: 3.50, maxAdapters: 14 },
+  'h200-141': { name: 'H200-141GB', memGB: 141, costHr: 5.50, maxAdapters: 24 },
+};
+
+const MODEL_SPECS = {
+  '7': { name: '7B', memGB: 14, maxReqPerGpu: 1200 },
+  '13': { name: '13B', memGB: 26, maxReqPerGpu: 800 },
+  '70': { name: '70B', memGB: 140, maxReqPerGpu: 300 },
+  '405': { name: '405B', memGB: 810, maxReqPerGpu: 80 },
+};
+
+function updateConfigBuilder() {
+  const tenants = parseInt(document.getElementById('cfgTenants').value) || 8;
+  const adaptersPerTenant = parseInt(document.getElementById('cfgAdaptersPerTenant').value) || 2;
+  const modelSizeKey = document.getElementById('cfgModelSize').value;
+  const gpuTypeKey = document.getElementById('cfgGpuType').value;
+
+  document.getElementById('cfgTenantsVal').textContent = tenants;
+  document.getElementById('cfgAdaptersPerTenantVal').textContent = adaptersPerTenant;
+
+  const gpu = GPU_SPECS[gpuTypeKey];
+  const model = MODEL_SPECS[modelSizeKey];
+
+  const totalAdapters = tenants * adaptersPerTenant;
+  // Adapter memory: ~2% of model size per adapter for LoRA
+  const adapterMemGB = model.memGB * 0.02;
+  const availableMemForAdapters = gpu.memGB - model.memGB * (gpu.memGB >= model.memGB ? 1 : 0);
+
+  // If model doesn't fit in single GPU, need tensor parallelism
+  const gpusPerInstance = Math.ceil(model.memGB / gpu.memGB);
+
+  let adapterSlotsPerPod;
+  if (gpusPerInstance > 1) {
+    adapterSlotsPerPod = Math.max(1, Math.floor((gpu.memGB * gpusPerInstance - model.memGB) / adapterMemGB));
+  } else {
+    adapterSlotsPerPod = Math.max(1, Math.floor(availableMemForAdapters / adapterMemGB));
+  }
+  adapterSlotsPerPod = Math.min(adapterSlotsPerPod, gpu.maxAdapters);
+
+  const minPods = Math.max(gpusPerInstance, Math.ceil(totalAdapters / adapterSlotsPerPod));
+  const recommendedPods = Math.ceil(minPods * 1.35); // 35% headroom
+  const memPerPod = model.memGB + (adapterSlotsPerPod * adapterMemGB);
+  const monthlyCost = recommendedPods * gpusPerInstance * gpu.costHr * 24 * 30;
+
+  function formatCost(val) {
+    if (val >= 1000000) return '$' + (val / 1000000).toFixed(1) + 'M';
+    if (val >= 1000) return '$' + (val / 1000).toFixed(1) + 'K';
+    return '$' + val.toFixed(0);
+  }
+
+  const container = document.getElementById('configResults');
+  container.innerHTML =
+    '<div class="config-result-card">'
+    + '<div class="config-result-label">Minimum Pods</div>'
+    + '<div class="config-result-value">' + minPods + '</div>'
+    + '<div class="config-result-detail">' + totalAdapters + ' adapters total</div>'
+    + '</div>'
+    + '<div class="config-result-card">'
+    + '<div class="config-result-label">Recommended Pods</div>'
+    + '<div class="config-result-value" style="color:var(--success)">' + recommendedPods + '</div>'
+    + '<div class="config-result-detail">+35% headroom</div>'
+    + '</div>'
+    + '<div class="config-result-card">'
+    + '<div class="config-result-label">Adapter Slots / Pod</div>'
+    + '<div class="config-result-value">' + adapterSlotsPerPod + '</div>'
+    + '<div class="config-result-detail">' + adapterMemGB.toFixed(1) + ' GB each</div>'
+    + '</div>'
+    + '<div class="config-result-card">'
+    + '<div class="config-result-label">Memory / Pod</div>'
+    + '<div class="config-result-value">' + memPerPod.toFixed(1) + '<span class="metric-unit">GB</span></div>'
+    + '<div class="config-result-detail">' + gpu.name + ' (' + gpu.memGB + 'GB)</div>'
+    + '</div>'
+    + '<div class="config-result-card">'
+    + '<div class="config-result-label">GPUs per Instance</div>'
+    + '<div class="config-result-value">' + gpusPerInstance + '</div>'
+    + '<div class="config-result-detail">' + model.name + ' model</div>'
+    + '</div>'
+    + '<div class="config-result-card">'
+    + '<div class="config-result-label">Monthly Cost Est.</div>'
+    + '<div class="config-result-value" style="color:var(--warning)">' + formatCost(monthlyCost) + '</div>'
+    + '<div class="config-result-detail">' + recommendedPods * gpusPerInstance + ' GPUs x $' + gpu.costHr + '/hr</div>'
+    + '</div>'
+    + '<div class="config-summary-card">'
+    + '<div class="config-summary-text">'
+    + 'For <strong>' + tenants + ' tenants</strong> with <strong>' + adaptersPerTenant + ' adapters each</strong> '
+    + '(' + totalAdapters + ' total) on <strong>' + model.name + '</strong> using <strong>' + gpu.name + '</strong>: '
+    + 'Deploy <strong>' + recommendedPods + ' pods</strong> (' + adapterSlotsPerPod + ' adapter slots each) '
+    + 'at approximately <strong>' + formatCost(monthlyCost) + '/month</strong>.'
+    + '</div>'
+    + '</div>';
 }
 
 // ================================================================
@@ -2268,6 +3174,14 @@ function tick() {
   renderRRScoring(rrState);
   renderSmartScoring(smartState);
   renderMetrics();
+
+  // Update heatmaps
+  renderHeatmap('rrHeatmap', rrState);
+  renderHeatmap('smartHeatmap', smartState);
+
+  // Update swap penalty breakdowns
+  renderSwapBreakdown('rrSwapBreakdown', lastRRSwap);
+  renderSwapBreakdown('smartSwapBreakdown', lastSmartSwap);
 }
 
 // ================================================================
@@ -2293,11 +3207,25 @@ function renderLoop(ts) {
   }
 
   // Update particle progress
+  const dt = 1 / 60; // approximate frame time
   [rrState, smartState].forEach(state => {
     state.particles.forEach(p => {
       p.progress += p.speed;
     });
     state.particles = state.particles.filter(p => p.progress < 1);
+
+    // Update burst particles
+    if (state.burstParticles) {
+      state.burstParticles.forEach(bp => {
+        bp.life += dt;
+        bp.x += bp.vx * dt;
+        bp.y += bp.vy * dt;
+        bp.vx *= 0.96; // friction
+        bp.vy *= 0.96;
+        bp.alpha = Math.max(0, 1 - bp.life / bp.maxLife);
+      });
+      state.burstParticles = state.burstParticles.filter(bp => bp.life < bp.maxLife);
+    }
   });
 
   // Render canvases
@@ -2325,6 +3253,8 @@ function updateSpeed(val) {
 function resetSimulation() {
   tickAccum = 0;
   lastTick = 0;
+  lastRRSwap = null;
+  lastSmartSwap = null;
   initSimStates();
   rrPodPositions = computePodPositions(document.getElementById('rrCanvas'), rrState.pods.length);
   smartPodPositions = computePodPositions(document.getElementById('smartCanvas'), smartState.pods.length);
@@ -2332,6 +3262,10 @@ function resetSimulation() {
   document.getElementById('smartScoring').innerHTML = '<p style="font-size:0.62rem;color:var(--text-muted)">Waiting for next request...</p>';
   renderMetrics();
   renderAdapterManager();
+  renderHeatmap('rrHeatmap', rrState);
+  renderHeatmap('smartHeatmap', smartState);
+  renderSwapBreakdown('rrSwapBreakdown', null);
+  renderSwapBreakdown('smartSwapBreakdown', null);
 }
 
 function toggleInfo() {
@@ -2541,6 +3475,12 @@ function init() {
   buildLegend();
   renderAdapterManager();
   renderMetrics();
+
+  // Initialize new sections
+  renderHeatmap('rrHeatmap', rrState);
+  renderHeatmap('smartHeatmap', smartState);
+  updateLoraComparison();
+  updateConfigBuilder();
 
   // Setup canvases
   requestAnimationFrame(() => {

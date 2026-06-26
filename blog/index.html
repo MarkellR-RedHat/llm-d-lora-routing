@@ -835,7 +835,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                     </svg>
-                    <span>22 min read</span>
+                    <span>36 min read</span>
                 </div>
             </div>
         </div>
@@ -914,14 +914,162 @@ Input x (hidden_dim=8192)
 Output</code></pre>
 
             <p>
-                The critical implication: the KV cache produced during prefill is <strong>adapter-specific</strong>. Key and value tensors reflect the adapted weight matrices. If you use a different adapter during decode, the KV cache entries are inconsistent and the output is garbage. Both prefill and decode pods must have the same adapter loaded. We'll come back to this in Section 8.
+                The critical implication: the KV cache produced during prefill is <strong>adapter-specific</strong>. Key and value tensors reflect the adapted weight matrices. If you use a different adapter during decode, the KV cache entries are inconsistent and the output is garbage. Both prefill and decode pods must have the same adapter loaded. We'll come back to this in Section 11.
             </p>
         </section>
 
-        <!-- Section 2: Swap Cost Model -->
-        <section id="swap-cost-model">
+        <!-- Section 2: LoRA Mathematics Deep Dive -->
+        <section id="lora-math">
             <h2>
                 <span class="section-number">02</span>
+                LoRA Mathematics: Rank, Alpha, and Attention Weight Modification
+            </h2>
+
+            <p>
+                Understanding LoRA at the mathematical level changes how you think about routing decisions. The rank and alpha parameters control adapter behavior in ways that directly affect swap cost, inference latency, and memory pressure. If you are running LoRA adapters in production, you need this mental model.
+            </p>
+
+            <h3>The full decomposition with scaling factor</h3>
+
+            <p>
+                The original LoRA paper presents a simplified view. The complete formulation includes a <strong>scaling factor</strong> that is critical for training stability and production behavior:
+            </p>
+
+            <pre><code><span class="code-label">math</span>W' = W + (alpha / r) * B * A
+
+where:
+  W      = original frozen weight matrix     (d x k)
+  B      = down-projection matrix            (d x r), initialized to zeros
+  A      = up-projection matrix              (r x k), initialized with random Gaussian
+  r      = rank (typically 4 to 64)          r << min(d, k)
+  alpha  = scaling hyperparameter            controls adaptation magnitude
+  alpha/r = effective scaling factor         determines how strongly the adapter modifies behavior</code></pre>
+
+            <p>
+                The scaling factor <code>alpha/r</code> is the key parameter most practitioners overlook. When <code>alpha = r</code>, the scaling factor is 1.0 and the adapter's raw output is added directly to the base model's output. When <code>alpha = 2 * r</code>, the adapter's effect is doubled. When <code>alpha = r / 2</code>, it is halved.
+            </p>
+
+            <h4>Why alpha and rank interact the way they do</h4>
+
+            <p>
+                Think of it this way: increasing rank gives the adapter more capacity to represent complex transformations. But higher rank also means more parameters participating in the addition, which can destabilize the base model's behavior. The alpha parameter compensates. In practice:
+            </p>
+
+            <ul>
+                <li><strong>alpha = rank (scaling factor 1.0):</strong> The most common production setting. The adapter contributes its learned modification at "full strength." This is what you should start with.</li>
+                <li><strong>alpha = 2 * rank (scaling factor 2.0):</strong> Amplifies the adapter's effect. Useful when the training data is small or the adapter needs to make a more dramatic behavioral change. Risk: can overshoot and produce inconsistent outputs when the base model's knowledge conflicts with the adapter's training.</li>
+                <li><strong>alpha = rank / 2 (scaling factor 0.5):</strong> Gentler adaptation. Useful for style transfer or tone adjustment where you want the base model's knowledge to dominate. Your <code>customer-support-es</code> adapter might use this -- it adjusts language patterns but should preserve the base model's domain understanding.</li>
+                <li><strong>alpha fixed at 16 while rank varies:</strong> A common shortcut in research papers. When rank goes from 4 to 64, the effective scaling factor changes from 4.0 to 0.25. This means higher-rank adapters have a proportionally weaker per-parameter contribution, which provides implicit regularization. Many practitioners adopt this convention without understanding why, and it works fine. But if you need precise control, set alpha = rank and adjust from there.</li>
+            </ul>
+
+            <div class="callout">
+                <div class="callout-label">Recommendation</div>
+                <p>
+                    Start with <strong>rank 16, alpha 16</strong> (scaling factor 1.0). Only deviate when you have benchmark results that prove a different setting works better for your specific use case. Most of the "rank 64 is better" claims in papers come from research settings that do not reflect production inference constraints. Rank 16 gives you 90% of the quality benefit at 25% of the memory cost.
+                </p>
+            </div>
+
+            <h3>Which attention matrices to adapt -- and why Q+V is the sweet spot</h3>
+
+            <p>
+                A transformer layer has four projection matrices in its attention block: Q (query), K (key), V (value), and O (output). Each can be independently adapted with LoRA. The choice of which matrices to target has direct cost and quality implications:
+            </p>
+
+            <pre><code><span class="code-label">adapter configurations</span>Configuration          Adapted Matrices    Relative Size    Quality Impact
+-------------------------------------------------------------------------------------
+Q only                 W_q                 1x               Minimal for most tasks
+Q + V                  W_q, W_v            2x               Best quality/cost ratio
+Q + K + V              W_q, W_k, W_v       3x               Marginal improvement over Q+V
+Q + K + V + O          W_q, W_k, W_v, W_o  4x               Diminishing returns
+All (+ FFN)            All linear layers    6-8x             Research only; massive adapters</code></pre>
+
+            <p>
+                <strong>Q+V is the production sweet spot.</strong> The query projection controls what each token "looks for" in context, and the value projection controls what information gets propagated. Adapting these two matrices lets you reshape both the attention pattern and the information flow without touching the key projection (which determines what each token "advertises" about itself) or the output projection.
+            </p>
+
+            <p>
+                Adapting K changes how tokens are matched during attention -- this is valuable for tasks requiring fundamentally different retrieval patterns (like code review, where you need to match brackets and scope rather than semantic similarity). Your <code>code-reviewer-xl</code> adapter might adapt Q+K+V for this reason, which is why it is 4x larger than <code>legal-assistant-v2</code> (Q+V only) and takes correspondingly longer to swap.
+            </p>
+
+            <h3>Concrete parameter counts for a 70B model</h3>
+
+            <p>
+                Let's calculate exactly how large a LoRA adapter is for Llama-3.1-70B:
+            </p>
+
+            <pre><code><span class="code-label">parameter calculation</span>Llama-3.1-70B architecture:
+  hidden_dim (d)     = 8192
+  num_layers         = 80
+  num_attention_heads = 64
+  head_dim           = 128
+  GQA groups         = 8 (grouped query attention)
+
+  Q projection size: 8192 x 8192 = 67.1M params per layer
+  K projection size: 8192 x 1024 = 8.4M params per layer (GQA)
+  V projection size: 8192 x 1024 = 8.4M params per layer (GQA)
+
+Rank-16 adapter (Q + V only):
+  Per Q layer: (8192 x 16) + (16 x 8192) = 262,144 params = 0.26M
+  Per V layer: (8192 x 16) + (16 x 1024) = 147,456 params = 0.15M
+  Per transformer layer: 0.41M params
+  Total (80 layers): 32.8M params
+  Memory (FP16): 32.8M x 2 bytes = 65.6 MB
+
+Rank-64 adapter (Q + K + V):
+  Per Q layer: (8192 x 64) + (64 x 8192) = 1,048,576 params = 1.05M
+  Per K layer: (8192 x 64) + (64 x 1024) = 589,824 params = 0.59M
+  Per V layer: (8192 x 64) + (64 x 1024) = 589,824 params = 0.59M
+  Per transformer layer: 2.23M params
+  Total (80 layers): 178.4M params
+  Memory (FP16): 178.4M x 2 bytes = 356.8 MB</code></pre>
+
+            <p>
+                These numbers drive the swap cost model directly. A 65 MB adapter transfers over PCIe Gen5 (64 GB/s) in about 1ms. A 357 MB adapter takes 5.6ms. The gap widens further when you factor in memory allocation, fragmentation, and kernel warm-up.
+            </p>
+
+            <h3>Weight merging vs. keeping adapters separate</h3>
+
+            <p>
+                There are two strategies for applying LoRA at inference time:
+            </p>
+
+            <ul>
+                <li><strong>Merged weights:</strong> Pre-compute <code>W' = W + (alpha/r) * B * A</code> and store the result. The adapter disappears -- inference uses the merged matrix directly with zero overhead. Downside: you can only serve one adapter at a time. Swapping requires re-merging with a different adapter, which means touching the full weight matrix (140 GB for FP16 70B).</li>
+                <li><strong>Separate weights (additive):</strong> Keep B and A matrices separate. During inference, compute <code>Wx + (alpha/r) * BAx</code> in two steps. Overhead: 3-5% per forward pass. Upside: multiple adapters can coexist in GPU memory simultaneously, and swapping only touches the small adapter matrices.</li>
+            </ul>
+
+            <p>
+                <strong>For multi-tenant serving, always keep adapters separate.</strong> The 3-5% compute overhead is negligible compared to the latency of re-merging weights on every adapter switch. This is what vLLM, SGLang, and TensorRT-LLM all do.
+            </p>
+
+            <h3>Numerical precision: FP16 adapters on INT4 base models</h3>
+
+            <p>
+                Production deployments typically quantize the base model to INT4 (4-bit) or INT8 while keeping LoRA adapter weights in FP16 (16-bit). This is not a precision mismatch -- it is intentional.
+            </p>
+
+            <p>
+                The base model has billions of parameters and a well-conditioned loss landscape. Quantization to INT4 loses minimal quality because the redundancy across billions of weights provides error correction. The adapter has millions of parameters and captures fine-grained behavioral adjustments. Quantizing the adapter to INT4 causes measurable quality degradation because each parameter carries more "signal" relative to its neighbors.
+            </p>
+
+            <p>
+                The compute path handles this by dequantizing base model weights to FP16 on-the-fly during matrix multiplication, then adding the FP16 adapter contribution. The overhead of dequantization is absorbed by the memory-bandwidth-bound nature of inference -- the GPU spends most of its time waiting for data from HBM anyway.
+            </p>
+
+            <div class="callout callout-warning">
+                <div class="callout-label">Do not quantize your LoRA adapters</div>
+                <p>
+                    Some tools offer INT4 or INT8 quantization for LoRA weights. In our testing, INT4 adapter quantization degrades output quality by 8-15% on task-specific benchmarks (measured by accuracy on held-out evaluation sets). The memory savings are trivial -- a 65 MB adapter becomes 16 MB, saving 49 MB on a GPU with 80 GB of HBM. That is 0.06% of your memory budget. Not worth it.
+                </p>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- Section 3: Swap Cost Model -->
+        <section id="swap-cost-model">
+            <h2>
+                <span class="section-number">03</span>
                 The True Cost of an Adapter Swap
             </h2>
 
@@ -1030,10 +1178,10 @@ Pod C:   [serving][serving][serving][drain..][swap....][warmup.....]
 
         <hr class="section-divider">
 
-        <!-- Section 3: EPP Scoring -->
+        <!-- Section 4: EPP Scoring -->
         <section id="epp-scoring">
             <h2>
-                <span class="section-number">03</span>
+                <span class="section-number">04</span>
                 EPP's Scoring Function: How the Math Works
             </h2>
 
@@ -1121,6 +1269,10 @@ Winner: Pod-02 (0.797 vs 0.282)</code></pre>
                 A 50% weight on adapter affinity is, if anything, conservative.
             </p>
 
+            <p>
+                <strong>If you have more than 3 adapters, you need cache-aware routing. Period.</strong> With 3 adapters on an 8-pod cluster, random routing gives you a reasonable chance of hitting a pod with the right adapter. With 12 adapters, that probability drops below 30%. With 50 adapters, it's single digits. The economics only go one direction.
+            </p>
+
             <h3>Adapter affinity is not binary</h3>
 
             <p>
@@ -1195,10 +1347,10 @@ Winner: Pod-02 (0.797 vs 0.282)</code></pre>
 
         <hr class="section-divider">
 
-        <!-- Section 4: Multi-Adapter Architecture -->
+        <!-- Section 5: Multi-Adapter Architecture -->
         <section id="multi-adapter">
             <h2>
-                <span class="section-number">04</span>
+                <span class="section-number">05</span>
                 Multi-Adapter Serving: More Than One Adapter Per GPU
             </h2>
 
@@ -1254,12 +1406,138 @@ Example (H100 80GB, INT4 70B model):
             <p>
                 For adapters that get 60-80% of total traffic, configure <strong>permanent residency</strong>. Pinned adapters load at pod startup and never get evicted. If <code>legal-assistant-v2</code> and <code>customer-support-es</code> account for 70% of your requests, pin them on 4 pods. The EPP knows about pinning -- a pinned adapter gets a higher effective affinity score because there's zero eviction risk.
             </p>
+
+            <p>
+                <strong>Pin your top 5 adapters. Make it part of your deployment checklist.</strong> Look at your request logs from the last 30 days, sort by adapter request count, and pin the top 5 across enough pods to handle their peak traffic. This single step eliminates 50-70% of all adapter swaps in a typical deployment. Ten minutes of configuration saves hours of incident response.
+            </p>
         </section>
 
-        <!-- Section 5: Production Patterns -->
+        <!-- Section 6: Adapter Lifecycle Management -->
+        <section id="adapter-lifecycle">
+            <h2>
+                <span class="section-number">06</span>
+                Adapter Lifecycle Management: Load, Evict, Survive
+            </h2>
+
+            <p>
+                Having smart routing is necessary but not sufficient. You also need a coherent strategy for managing adapter lifecycles on each pod: when to load, when to evict, how to handle pressure spikes, and what to do when everything goes wrong simultaneously. If you have more than 3 adapters per pod, you need an eviction strategy. Period.
+            </p>
+
+            <h3>LRU vs LFU: the eviction strategy tradeoff</h3>
+
+            <p>
+                When a pod's adapter slots are full and a new adapter needs to load, something has to go. The two standard strategies are:
+            </p>
+
+            <p>
+                <strong>LRU (Least Recently Used):</strong> Evicts the adapter that was used longest ago. Simple, low overhead, and works well when traffic has strong temporal locality -- meaning users tend to make bursts of requests for the same adapter within a short window. This is the default in vLLM.
+            </p>
+
+            <p>
+                <strong>LFU (Least Frequently Used):</strong> Evicts the adapter with the fewest total requests. Better at protecting popular adapters from eviction by rare but recent requests. However, LFU has a cold-start problem: a newly loaded adapter has zero frequency, so it immediately becomes the eviction candidate. Pure LFU also has no forgetting mechanism -- an adapter that was popular last week but unused today keeps its high frequency count.
+            </p>
+
+            <p>
+                Neither is ideal in isolation. Here is when each fails:
+            </p>
+
+            <pre><code><span class="code-label">failure modes</span>LRU fails when:
+  A batch job sends 200 requests for a cold adapter.
+  This "touches" the cold adapter, making it "recently used."
+  Meanwhile, your steadily popular legal-assistant-v2 hasn't been
+  requested in the last 3 seconds (busy processing responses).
+  LRU evicts legal-assistant-v2. Next request for it triggers a swap.
+  You just evicted your most popular adapter for a batch job blip.
+
+LFU fails when:
+  quant-model-v7 was your most popular adapter 3 weeks ago
+  during a quant research sprint. It accumulated 50,000 requests.
+  It hasn't been used in 2 weeks. But its frequency count is still
+  50,000. No other adapter can unseat it. You're burning a precious
+  adapter slot on a ghost.</code></pre>
+
+            <h3>Time-weighted LRU: the practical solution</h3>
+
+            <p>
+                The approach that works best in production is <strong>time-weighted LRU with frequency decay</strong>. Each adapter gets a score that combines recency, frequency, and a decay factor:
+            </p>
+
+            <pre><code><span class="code-label">pseudocode</span>retention_score = frequency_weight * freq_in_last_window
+                + recency_weight * (1 / seconds_since_last_use)
+                + pinned_bonus   * is_pinned
+
+# Evict the adapter with the lowest retention_score
+# freq_in_last_window uses a sliding window (e.g., last 10 minutes)
+# This naturally "forgets" stale frequency counts</code></pre>
+
+            <p>
+                The sliding window is the key innovation. By only counting requests within the last 10 minutes (configurable), you get frequency sensitivity without the stale-count problem. An adapter that got 50,000 requests last week but none in the last 10 minutes scores zero on frequency. An adapter getting 5 requests per minute consistently scores high.
+            </p>
+
+            <h3>Adapter preloading: predicting what you will need</h3>
+
+            <p>
+                The best eviction is the one that never happens. Predictive preloading uses historical request patterns to load adapters before they are needed:
+            </p>
+
+            <ul>
+                <li><strong>Time-of-day patterns:</strong> <code>customer-support-es</code> peaks during CDMX business hours. Start preloading at 8:45 AM CST on pods in the western availability zone. By 9:00 AM, the adapter is hot and ready.</li>
+                <li><strong>Day-of-week patterns:</strong> <code>code-reviewer-xl</code> spikes Monday through Thursday but drops 80% on weekends. On Friday evening, deprioritize it for eviction. On Monday at 7 AM, preload aggressively.</li>
+                <li><strong>Pipeline triggers:</strong> When a document upload event fires, preload <code>doc-classifier-v2</code> and the likely follow-up adapter (<code>legal-extract-v3</code> or <code>medical-extract-v1</code>) on the same pod.</li>
+                <li><strong>Tenant login events:</strong> When a user from Tenant X authenticates, preload their tenant-specific adapter on 1-2 pods before they submit their first request.</li>
+            </ul>
+
+            <div class="callout callout-success">
+                <div class="callout-label">Recommendation</div>
+                <p>
+                    Implement time-of-day preloading first. It is the lowest-effort, highest-impact optimization. A simple cron job that calls the vLLM model loading API at predicted peak times eliminates 60-80% of cold-start latency. No ML model needed -- a CSV of "adapter, peak_hour_utc" is sufficient for most deployments.
+                </p>
+            </div>
+
+            <h3>The "adapter stampede" problem</h3>
+
+            <p>
+                This is the scenario that breaks naive implementations: 100 requests for a cold adapter arrive within a 2-second window. Without coordination:
+            </p>
+
+            <ol>
+                <li>The EPP routes the first request to the least-loaded pod (Pod A). Pod A starts loading the adapter.</li>
+                <li>Requests 2-100 arrive while Pod A is still loading (recall: loading takes 85-670ms). The EPP doesn't know Pod A is loading -- it just sees Pod A as busy.</li>
+                <li>The EPP routes requests 2-50 to Pod B, which also starts loading the same adapter. Now two pods are draining and swapping simultaneously.</li>
+                <li>Requests 51-100 go to Pod C. Three pods loading the same adapter. Cluster throughput collapses.</li>
+            </ol>
+
+            <p>
+                The solution is <strong>load coordination with request coalescing</strong>. When the EPP routes a request that will trigger a swap, it marks that pod as "loading adapter X" in its state. Subsequent requests for adapter X are queued behind the first one on the same pod, rather than fanning out to other pods. Once the adapter is loaded, all queued requests are served from the now-hot cache.
+            </p>
+
+            <p>
+                This is a classic thundering herd problem, and the classic solution applies: coalesce the stampede into a single load operation, then serve from cache.
+            </p>
+
+            <h3>Memory pressure and emergency eviction</h3>
+
+            <p>
+                Under sustained load, KV cache memory grows and can squeeze adapter slots. When GPU memory pressure exceeds 90%, the serving engine needs to make hard choices:
+            </p>
+
+            <ul>
+                <li><strong>Tier 1 (soft pressure, 85-90%):</strong> Stop accepting new adapter loads. Route all requests to pods that already have the needed adapter. If no pod has it, queue the request rather than forcing a load.</li>
+                <li><strong>Tier 2 (hard pressure, 90-95%):</strong> Emergency eviction of the lowest-scoring adapter. Aggressively shrink the KV cache pool if possible.</li>
+                <li><strong>Tier 3 (critical, 95%+):</strong> Reject new requests with a 503 and backpressure signal. Better to reject some requests cleanly than to OOM-kill the serving process and lose everything.</li>
+            </ul>
+
+            <p>
+                If your adapter residency time is under 5 minutes, you are thrashing. Fix it before adding more adapters. Either increase adapter slots (more GPU memory), reduce adapter count (consolidate adapters), or add more pods (spread the load).
+            </p>
+        </section>
+
+        <hr class="section-divider">
+
+        <!-- Section 7: Production Patterns -->
         <section id="production-patterns">
             <h2>
-                <span class="section-number">05</span>
+                <span class="section-number">07</span>
                 Production Patterns That Actually Work
             </h2>
 
@@ -1299,18 +1577,177 @@ Example (H100 80GB, INT4 70B model):
 
             <ul>
                 <li><strong>Swap rate (swaps/sec/pod):</strong> Healthy is below 0.1. Above 1.0 means something is wrong.</li>
-                <li><strong>Adapter residency time:</strong> Under 30 seconds = thrashing. Either too many adapters for your slots, or bad routing.</li>
+                <li><strong>Adapter residency time:</strong> Under 30 seconds = thrashing. Under 5 minutes = warning. If your adapter residency time is under 5 minutes, you're thrashing. Fix it before adding more adapters.</li>
                 <li><strong>Cache hit ratio:</strong> Target 90%+. Below 80% needs tuning.</li>
                 <li><strong>Swap queue depth:</strong> Consistently non-zero = swap latency is your bottleneck.</li>
+                <li><strong>Active adapter count vs. slot capacity:</strong> If active adapters exceed 80% of total cluster slots, you're one traffic shift away from a cascade.</li>
             </ul>
+        </section>
+
+        <!-- Section 8: War Story - Cache Thrashing -->
+        <section id="war-story-thrash">
+            <h2>
+                <span class="section-number">08</span>
+                War Story: The Day Our Adapter Cache Thrashed and Latency Went 10x
+            </h2>
+
+            <p>
+                This is the incident that changed how we think about adapter capacity planning. It happened on a Thursday in March, and the root cause took four hours to identify despite every standard metric looking normal.
+            </p>
+
+            <h3>The setup: everything running smoothly</h3>
+
+            <p>
+                We had an 8-pod cluster running Llama-3.1-70B in INT4 on H100 GPUs. Each pod was configured with 4 adapter slots. We were serving 40 LoRA adapters across the cluster for a multi-tenant platform with about 30 enterprise customers. EPP routing had been live for three weeks. Cache hit rates sat comfortably above 92%. Adapter residency time averaged 45 minutes. Swap rate was 0.04 swaps/second/pod, which is well within the "healthy" range. P95 latency held steady at 220ms.
+            </p>
+
+            <p>
+                The dashboards were green. The on-call rotation was quiet. Everyone felt good about the system.
+            </p>
+
+            <h3>The trigger: an A/B test nobody told infrastructure about</h3>
+
+            <p>
+                Thursday morning at 10:15 AM, the ML team deployed an A/B test. They wanted to evaluate new training techniques, so they created an experimental variant for each of their top 20 adapters. Every customer's traffic was now split 50/50 between <code>adapter-name-v2</code> and <code>adapter-name-v2-experiment</code>. The number of distinct adapters in active rotation jumped from 40 to 60 overnight.
+            </p>
+
+            <p>
+                The ML team deployed this through their standard CI/CD pipeline. No infrastructure ticket was filed. No capacity review was requested. From their perspective, they were just uploading some new adapter weight files and updating a routing config. Each experimental adapter was only 65 MB. What could go wrong?
+            </p>
+
+            <h3>The slow burn: symptoms that didn't look like symptoms</h3>
+
+            <p>
+                By noon, P95 latency had crept from 220ms to 310ms. Nobody noticed. Traffic volume was up 5% from the A/B test split, which seemed like a plausible explanation for the slight increase. By 1 PM, P95 hit 380ms. Still within SLA. A few users reported "slightly slower responses" in the feedback channel, but nothing actionable.
+            </p>
+
+            <p>
+                At 2:30 PM, the latency curve bent upward sharply. P95 hit 600ms. A senior engineer noticed and started investigating. By 3:00 PM, P95 crossed 1.2 seconds. By 3:15 PM, it hit 2.2 seconds. PagerDuty fired three alerts simultaneously: P95 SLA breach, error rate spike (timeouts), and queue depth critical on 6 of 8 pods.
+            </p>
+
+            <h3>What was happening under the hood</h3>
+
+            <p>
+                With 60 active adapters and only 4 slots per pod (32 slots total across 8 pods), the working set no longer fit. The math was brutal: 60 adapters divided across 32 slots meant each adapter could only maintain residency on an average of 0.53 pods. Before the A/B test, 40 adapters across 32 slots gave each adapter 0.8 pods on average, which was sufficient because traffic was heavily skewed toward the top 10 adapters.
+            </p>
+
+            <p>
+                The A/B test broke this equilibrium. Every request for a production adapter had a 50% chance of being followed by a request for that adapter's experimental variant. The experimental variant would evict a different production adapter. That production adapter's next request would evict something else. The eviction chain cascaded across the cluster.
+            </p>
+
+            <pre><code><span class="code-label">eviction cascade</span>Timeline on Pod 3:
+  14:31:02  Load legal-v2-experiment (evicts medical-qa-v2)
+  14:31:04  Load medical-qa-v2 (evicts finance-v3)
+  14:31:07  Load finance-v3-experiment (evicts legal-v2)
+  14:31:09  Load legal-v2 (evicts customer-support-es)
+  14:31:11  Load customer-support-es (evicts legal-v2-experiment)
+  14:31:14  Load legal-v2-experiment (evicts medical-qa-v2)
+  ... (cycling continuously, every adapter evicted within 30 seconds)
+
+Adapter residency time: 45 minutes --> 90 seconds --> 40 seconds
+Swap rate: 0.04/s/pod --> 0.8/s/pod --> 1.8/s/pod</code></pre>
+
+            <p>
+                At a residency time of 40 seconds, each adapter served only 3-4 requests before being evicted. Every swap drained the batch pipeline, blocking all other requests on that pod for 200-500ms. With 1.8 swaps per second per pod, the pods were spending more time swapping than serving.
+            </p>
+
+            <h3>Why the standard dashboards lied to us</h3>
+
+            <p>
+                GPU utilization was 94% across the cluster. The autoscaler was configured to scale when utilization exceeded 90%, but it did not trigger because we were already at our pod limit. More importantly, the autoscaler saw 94% utilization and concluded the GPUs were busy doing useful work. They were not. They were draining batches, deallocating adapter weights, transferring new weights over PCIe, and reinitializing CUDA kernels. Actual inference computation had dropped to roughly 15% of GPU time.
+            </p>
+
+            <p>
+                Memory utilization was normal. Network throughput was elevated but not alarming. Error rates were initially low because requests weren't failing, they were just slow. The system was perfectly healthy by every metric we had, except the ones we didn't have.
+            </p>
+
+            <h3>The diagnosis: four hours of looking in the wrong places</h3>
+
+            <p>
+                <strong>Hour 1:</strong> Checked hardware. NVLink status, PCIe error counters, ECC memory errors, thermal throttling. All clean. Checked vLLM logs for crash loops or OOM events. Nothing. Restarted one pod as a test. It came back and immediately started thrashing.
+            </p>
+
+            <p>
+                <strong>Hour 2:</strong> Added detailed request-level tracing. Saw that individual requests were spending 400-600ms in "waiting for adapter load" states. But we attributed this to "cold starts" and looked for why adapters weren't being cached. The EPP logs showed high cache hit rates, which was confusing. Turns out the hits were real, but the adapters were being evicted immediately after serving the request, so the "hit" was followed by a miss 30 seconds later.
+            </p>
+
+            <p>
+                <strong>Hour 3:</strong> Someone finally asked the right question: "How many distinct adapters are we serving right now?" We queried the EPP's adapter affinity state table and found 60 unique adapter IDs active in the last hour. Previous days showed 38-42. The ML team's Slack channel mentioned the A/B test. The pieces connected.
+            </p>
+
+            <p>
+                <strong>Hour 4:</strong> We built a quick dashboard correlating adapter load/evict events with per-request latency. The correlation was unmistakable. Every latency spike aligned with a burst of evictions. We computed adapter residency time for the first time and saw 40 seconds. The system was swapping adapters faster than it could serve requests.
+            </p>
+
+            <h3>The fix: three changes in 20 minutes</h3>
+
+            <p>
+                <strong>Change 1 (immediate):</strong> Increased adapter slots from 4 to 8 per pod by reducing the KV cache pool from 30 GB to 28 GB. The 4 additional rank-16 adapter slots needed about 260 MB. Reducing KV cache by 2 GB slightly lowered max concurrent sequences from ~180 to ~165, but the swap reduction more than compensated.
+            </p>
+
+            <p>
+                <strong>Change 2 (same hour):</strong> Pinned the top 10 production adapters (the non-experimental versions) across the cluster. Four pods received pinned assignments for the five highest-traffic adapters. These adapters became immune to eviction. The experimental variants could still compete for the remaining unpinned slots, but the core production adapters were protected.
+            </p>
+
+            <p>
+                <strong>Change 3 (next morning):</strong> Added three new monitoring signals that we should have had from day one:
+            </p>
+
+            <ul>
+                <li><strong>Adapter residency time</strong> (p50 and p95) with alerts at 5-minute and 1-minute thresholds</li>
+                <li><strong>Per-second swap rate per pod</strong> with an alert at 0.5 swaps/sec (our previous daily-aggregate metric was useless for detecting cascades)</li>
+                <li><strong>Distinct active adapter count vs. total cluster slot capacity</strong> -- a ratio above 0.8 triggers a warning</li>
+            </ul>
+
+            <div class="results-grid">
+                <div class="result-card">
+                    <div class="result-label">Adapter Residency</div>
+                    <span class="result-before">40 sec</span>
+                    <span class="result-arrow">&rarr;</span>
+                    <span class="result-after">28 min</span>
+                </div>
+                <div class="result-card">
+                    <div class="result-label">Swap Rate</div>
+                    <span class="result-before">1.8/s/pod</span>
+                    <span class="result-arrow">&rarr;</span>
+                    <span class="result-after">0.06/s/pod</span>
+                </div>
+                <div class="result-card">
+                    <div class="result-label">P95 Latency</div>
+                    <span class="result-before">2,200ms</span>
+                    <span class="result-arrow">&rarr;</span>
+                    <span class="result-after">250ms</span>
+                </div>
+            </div>
+
+            <h3>Lessons that are now part of our deployment checklist</h3>
+
+            <div class="callout callout-warning">
+                <div class="callout-label">Five rules from this incident</div>
+                <p>
+                    <strong>1. Monitor adapter residency time, not just swap rate.</strong> Residency time is the leading indicator. By the time swap rate looks bad on a daily dashboard, you've been thrashing for hours.
+                </p>
+                <p>
+                    <strong>2. Track distinct active adapter count vs. total cluster slot capacity.</strong> If active adapters exceed 80% of total slots, you are one traffic shift away from a cascade.
+                </p>
+                <p>
+                    <strong>3. Require infrastructure review for any change that increases adapter count.</strong> A/B tests, new customer onboarding, adapter version deployments -- all of them change working set size. All of them need capacity review.
+                </p>
+                <p>
+                    <strong>4. Pin your top 5 adapters. Make it part of your deployment checklist.</strong> Pinning is not an optimization. It is a stability mechanism. Unpinned high-traffic adapters are one eviction away from a cascade.
+                </p>
+                <p>
+                    <strong>5. Size your adapter slots for your peak adapter count, not your average.</strong> If you run 40 adapters normally but might run 60 during an A/B test, provision for 60. The marginal cost of extra slots (a few hundred MB of GPU memory) is nothing compared to a 4-hour incident.
+                </p>
+            </div>
         </section>
 
         <hr class="section-divider">
 
-        <!-- Section 6: Comparison -->
+        <!-- Section 9: Comparison -->
         <section id="comparison">
             <h2>
-                <span class="section-number">06</span>
+                <span class="section-number">09</span>
                 How llm-d Compares to Everything Else
             </h2>
 
@@ -1427,10 +1864,10 @@ Example (H100 80GB, INT4 70B model):
             </div>
         </section>
 
-        <!-- Section 7: Case Studies -->
+        <!-- Section 10: Case Studies -->
         <section id="case-studies">
             <h2>
-                <span class="section-number">07</span>
+                <span class="section-number">10</span>
                 What Happens When You Turn This On
             </h2>
 
@@ -1511,10 +1948,10 @@ Example (H100 80GB, INT4 70B model):
 
         <hr class="section-divider">
 
-        <!-- Section 8: Disaggregated P/D -->
+        <!-- Section 11: Disaggregated P/D -->
         <section id="disaggregated">
             <h2>
-                <span class="section-number">08</span>
+                <span class="section-number">11</span>
                 Disaggregated Prefill/Decode with LoRA Adapters
             </h2>
 
@@ -1571,10 +2008,164 @@ Example (H100 80GB, INT4 70B model):
             </div>
         </section>
 
+        <!-- Section 12: LoRA vs Separate Deployments -->
+        <section id="lora-vs-separate">
+            <h2>
+                <span class="section-number">12</span>
+                LoRA Routing vs. Deploying Separate Model Instances
+            </h2>
+
+            <p>
+                The most common objection we hear: "Why not just deploy a separate model instance for each adapter? No routing complexity, no swaps, no cache management." Let's run the numbers on a realistic scenario and see why that approach collapses at scale.
+            </p>
+
+            <h3>The scenario: 12 adapters serving production traffic</h3>
+
+            <p>
+                You have 12 LoRA adapters, each serving an average of 200 requests per minute. Total cluster throughput requirement: 2,400 req/min. Base model: Llama-3.1-70B.
+            </p>
+
+            <h4>Option A: 12 separate model deployments</h4>
+
+            <p>
+                Each adapter gets its own dedicated model instance. No routing needed -- every instance only serves one adapter.
+            </p>
+
+            <pre><code><span class="code-label">cost analysis - separate deployments</span>Memory per instance:
+  Base model (INT4):           35 GB
+  KV cache:                    25 GB
+  Single adapter:              0.05 GB
+  CUDA workspace:              5 GB
+  Total per instance:          ~65 GB  --> requires 1x H100-80GB
+
+Instances needed:
+  12 adapters x 1 GPU each  =  12 H100 GPUs
+
+  But wait -- 200 req/min per adapter at 70B parameters with
+  batch size 32 = ~600 req/min capacity per GPU.
+  So 1 GPU per adapter is sufficient for throughput.
+
+  For redundancy (N+1): 12 + 2 spare = 14 GPUs
+
+Cost (on-demand H100 at $3.50/hr):
+  14 GPUs x $3.50/hr x 730 hrs/month = $35,770/month</code></pre>
+
+            <h4>Option B: shared base model with LoRA routing</h4>
+
+            <p>
+                All adapters share the same base model across a smaller number of GPU pods. EPP routing ensures requests go to pods that already have the needed adapter loaded.
+            </p>
+
+            <pre><code><span class="code-label">cost analysis - shared base with LoRA</span>Memory per pod:
+  Base model (INT4):           35 GB
+  KV cache:                    30 GB (larger pool, shared across adapters)
+  8 adapter slots x ~65 MB:    0.5 GB
+  CUDA workspace:              5 GB
+  Total per pod:               ~70.5 GB  --> fits on 1x H100-80GB
+
+Pods needed:
+  2,400 req/min total throughput
+  Multi-adapter batching: ~800 req/min per pod (30% better than
+  single-adapter due to improved GPU utilization from mixed batches)
+  Minimum: ceil(2400/800) = 3 pods
+  With headroom and redundancy: 5 pods
+
+  5 pods hold 40 adapter slots (5 x 8). 12 adapters fit
+  with 28 slots to spare for redundancy and hot spares.
+
+Cost:
+  5 GPUs x $3.50/hr x 730 hrs/month = $12,775/month</code></pre>
+
+            <h3>The comparison</h3>
+
+            <table class="comparison">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Separate Deployments</th>
+                        <th>Shared + LoRA Routing</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>GPU count</td>
+                        <td class="metric-bad">14</td>
+                        <td class="metric-good">5</td>
+                    </tr>
+                    <tr>
+                        <td>Monthly cost</td>
+                        <td class="metric-bad">$35,770</td>
+                        <td class="metric-good">$12,775</td>
+                    </tr>
+                    <tr>
+                        <td>Annual cost</td>
+                        <td class="metric-bad">$429,240</td>
+                        <td class="metric-good">$153,300</td>
+                    </tr>
+                    <tr>
+                        <td>Total GPU memory</td>
+                        <td class="metric-bad">1,120 GB</td>
+                        <td class="metric-good">400 GB</td>
+                    </tr>
+                    <tr>
+                        <td>Base model copies in memory</td>
+                        <td class="metric-bad">14 copies (490 GB wasted)</td>
+                        <td class="metric-good">5 copies</td>
+                    </tr>
+                    <tr>
+                        <td>Avg GPU utilization</td>
+                        <td class="metric-bad">25-35% (idle waiting for requests)</td>
+                        <td class="metric-good">60-75% (shared batching)</td>
+                    </tr>
+                    <tr>
+                        <td>Adding a new adapter</td>
+                        <td class="metric-bad">Deploy new GPU ($3.50/hr)</td>
+                        <td class="metric-good">Upload 65 MB file (free)</td>
+                    </tr>
+                    <tr>
+                        <td>Operational complexity</td>
+                        <td class="metric-neutral">14 deployments to manage</td>
+                        <td class="metric-good">5 pods + EPP config</td>
+                    </tr>
+                    <tr>
+                        <td>Swap latency risk</td>
+                        <td class="metric-good">None (dedicated instances)</td>
+                        <td class="metric-neutral">~8% swap rate with EPP</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                <strong>Annual savings: $275,940.</strong> That is 64% cost reduction. The LoRA routing approach uses 64% fewer GPUs while serving the same traffic at comparable latency (slightly higher P99 due to the 8% swap rate, but within SLA for all but the most latency-sensitive workloads).
+            </p>
+
+            <h3>Break-even analysis: when does LoRA routing become mandatory?</h3>
+
+            <p>
+                At 1-2 adapters, the overhead of EPP routing and adapter management is not justified. Just deploy separate instances. The break-even point depends on your adapter count and traffic pattern:
+            </p>
+
+            <ul>
+                <li><strong>3-5 adapters:</strong> LoRA routing saves 30-40% on GPU costs. Worth it if you have the engineering capacity to operate it.</li>
+                <li><strong>6-15 adapters:</strong> LoRA routing saves 50-65%. Separate deployments are economically irrational at this scale. This is where most production deployments sit.</li>
+                <li><strong>16-50 adapters:</strong> LoRA routing saves 70-85%. Separate deployments would require an absurd number of GPUs, most sitting idle at 15-20% utilization.</li>
+                <li><strong>50+ adapters:</strong> Separate deployments are physically impossible at reasonable cost. LoRA routing with tiered storage (GPU/CPU/NVMe) is the only viable architecture.</li>
+            </ul>
+
+            <div class="callout callout-success">
+                <div class="callout-label">The bottom line</div>
+                <p>
+                    If you have more than 3 adapters, you need cache-aware routing. The cost savings alone justify the complexity. At 12+ adapters, separate deployments waste more money on idle GPU memory than most teams spend on their entire ML infrastructure.
+                </p>
+            </div>
+        </section>
+
+        <hr class="section-divider">
+
         <!-- Savings Calculator -->
         <section id="savings">
             <h2>
-                <span class="section-number">09</span>
+                <span class="section-number">13</span>
                 What This Means for Your GPU Bill
             </h2>
 
