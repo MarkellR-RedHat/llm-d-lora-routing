@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cache-Aware LoRA Routing in llm-d: Eliminating Adapter Swap Overhead at Scale</title>
+    <meta name="description" content="A deep dive into how llm-d's Endpoint Picker routes requests to pods with the right LoRA adapter already loaded, eliminating costly adapter swaps in multi-tenant LLM serving.">
+    <meta name="author" content="Markell Rawls">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --bg-code: #0d1117;
+            --accent: #3b82f6;
+            --accent-light: #60a5fa;
+            --accent-dim: #1e3a5f;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --border-light: #475569;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font-body);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.75;
+            font-size: 17px;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* Header / Hero */
+        .hero {
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #131c35 50%, var(--bg-primary) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 3rem 1.5rem 2.5rem;
+        }
+
+        .hero-inner {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .breadcrumb a {
+            color: var(--accent-light);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .breadcrumb a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .breadcrumb .sep {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+        }
+
+        .badge-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .badge-cncf {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-light);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-version {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        h1 {
+            font-size: clamp(1.75rem, 4vw, 2.5rem);
+            font-weight: 800;
+            line-height: 1.2;
+            letter-spacing: -0.025em;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+            max-width: 650px;
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1.5rem;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .meta-item svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .author-name {
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        /* Main content */
+        .content-wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2.5rem 1.5rem 4rem;
+        }
+
+        /* Table of Contents */
+        .toc {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .toc-title {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        .toc ol {
+            list-style: none;
+            counter-reset: toc-counter;
+        }
+
+        .toc ol li {
+            counter-increment: toc-counter;
+            margin-bottom: 0.5rem;
+        }
+
+        .toc ol li a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.9375rem;
+            font-weight: 500;
+            transition: color 0.2s;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .toc ol li a::before {
+            content: counter(toc-counter, decimal-leading-zero);
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .toc ol li a:hover {
+            color: var(--accent-light);
+        }
+
+        /* Sections */
+        section {
+            margin-bottom: 3.5rem;
+        }
+
+        h2 {
+            font-size: 1.625rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            margin-bottom: 1.25rem;
+            padding-top: 1rem;
+            color: var(--text-primary);
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+        }
+
+        h2 .section-number {
+            color: var(--accent);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            font-weight: 600;
+            display: block;
+            margin-bottom: 0.375rem;
+        }
+
+        h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-top: 2rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 1.25rem;
+            color: var(--text-secondary);
+        }
+
+        a {
+            color: var(--accent-light);
+            text-decoration: underline;
+            text-decoration-color: rgba(96, 165, 250, 0.3);
+            text-underline-offset: 2px;
+            transition: text-decoration-color 0.2s;
+        }
+
+        a:hover {
+            text-decoration-color: var(--accent-light);
+        }
+
+        strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        em {
+            font-style: italic;
+        }
+
+        ul, ol {
+            margin-bottom: 1.25rem;
+            padding-left: 1.25rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        li strong {
+            color: var(--text-primary);
+        }
+
+        /* Code */
+        code {
+            font-family: var(--font-mono);
+            font-size: 0.875em;
+            background: var(--bg-code);
+            color: #e2e8f0;
+            padding: 0.15em 0.4em;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        pre {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.25rem 1.5rem;
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        pre code {
+            background: none;
+            border: none;
+            padding: 0;
+            font-size: 0.8125rem;
+            line-height: 1.7;
+            color: #c9d1d9;
+        }
+
+        .code-label {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.75rem;
+            font-size: 0.6875rem;
+            font-family: var(--font-mono);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Callout / pull quote */
+        .callout {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.03));
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1.25rem 1.5rem;
+            margin: 1.75rem 0;
+        }
+
+        .callout p {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            font-size: 1rem;
+        }
+
+        .callout p:not(:last-child) {
+            margin-bottom: 0.75rem;
+        }
+
+        .callout strong {
+            color: var(--accent-light);
+        }
+
+        .callout-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+
+        .callout-warning {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03));
+            border-left-color: var(--warning);
+        }
+
+        .callout-warning .callout-label {
+            color: var(--warning);
+        }
+
+        .callout-warning strong {
+            color: var(--warning);
+        }
+
+        /* Diagram boxes */
+        .diagram {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            overflow-x: auto;
+        }
+
+        .diagram-title {
+            font-size: 0.8125rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            text-align: center;
+        }
+
+        .diagram-flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+        }
+
+        .diagram-box {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-light);
+            border-radius: 8px;
+            padding: 0.625rem 1rem;
+            text-align: center;
+            color: var(--text-primary);
+            font-weight: 500;
+            min-width: 90px;
+        }
+
+        .diagram-box.highlight {
+            border-color: var(--accent);
+            background: var(--accent-dim);
+            color: var(--accent-light);
+        }
+
+        .diagram-box.success {
+            border-color: var(--success);
+            background: rgba(34, 197, 94, 0.1);
+            color: #4ade80;
+        }
+
+        .diagram-box.warning {
+            border-color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            color: #fbbf24;
+        }
+
+        .diagram-arrow {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            flex-shrink: 0;
+        }
+
+        /* Comparison table */
+        .comparison {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.9375rem;
+        }
+
+        .comparison th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.8125rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .comparison td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        .comparison tr:last-child td {
+            border-bottom: none;
+        }
+
+        .comparison .metric-good {
+            color: #4ade80;
+            font-weight: 600;
+        }
+
+        .comparison .metric-bad {
+            color: #f87171;
+            font-weight: 600;
+        }
+
+        /* Scoring breakdown */
+        .score-visual {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+
+        .score-bar-group {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .score-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            min-width: 140px;
+            flex-shrink: 0;
+        }
+
+        .score-track {
+            flex: 1;
+            height: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+
+        .score-fill.high { background: var(--accent); }
+        .score-fill.medium { background: #8b5cf6; }
+        .score-fill.low { background: var(--text-muted); }
+
+        .score-value {
+            font-family: var(--font-mono);
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+            min-width: 36px;
+            text-align: right;
+        }
+
+        /* CTA Button */
+        .cta-section {
+            background: linear-gradient(135deg, var(--accent-dim), rgba(59, 130, 246, 0.05));
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 2rem 2.5rem;
+            text-align: center;
+            margin: 3rem 0;
+        }
+
+        .cta-section h3 {
+            color: var(--text-primary);
+            margin-top: 0;
+            margin-bottom: 0.75rem;
+        }
+
+        .cta-section p {
+            margin-bottom: 1.5rem;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--accent);
+            color: white;
+            padding: 0.75rem 1.75rem;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.9375rem;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .cta-button:hover {
+            background: #2563eb;
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
+
+        .cta-button svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Author card */
+        .author-card {
+            display: flex;
+            gap: 1.25rem;
+            align-items: flex-start;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-top: 3rem;
+        }
+
+        .author-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .author-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .author-info p {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-bottom: 0;
+            line-height: 1.5;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem 1.5rem;
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 0.8125rem;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent-light);
+        }
+
+        /* Responsive */
+        @media (max-width: 640px) {
+            body { font-size: 16px; }
+
+            .hero { padding: 2rem 1rem 1.75rem; }
+            .content-wrapper { padding: 1.5rem 1rem 3rem; }
+
+            .meta { gap: 0.75rem; }
+
+            .toc { padding: 1.25rem; }
+
+            .diagram-flow {
+                flex-direction: column;
+            }
+
+            .diagram-arrow {
+                transform: rotate(90deg);
+            }
+
+            .score-bar-group {
+                flex-wrap: wrap;
+            }
+
+            .score-label {
+                min-width: 100%;
+            }
+
+            .author-card {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .cta-section { padding: 1.5rem; }
+
+            .comparison {
+                font-size: 0.8125rem;
+            }
+
+            .comparison th,
+            .comparison td {
+                padding: 0.5rem 0.625rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <div class="hero-inner">
+            <nav class="breadcrumb">
+                <a href="../index.html">llm-d LoRA Routing</a>
+                <span class="sep">&#9656;</span>
+                <a href="#">Blog</a>
+            </nav>
+
+            <div class="badge-row">
+                <span class="badge badge-cncf">CNCF Sandbox</span>
+                <span class="badge badge-version">llm-d v0.5</span>
+            </div>
+
+            <h1>Cache-Aware LoRA Routing in llm-d: Eliminating Adapter Swap Overhead at Scale</h1>
+
+            <p class="subtitle">
+                How llm-d's Endpoint Picker intelligently routes requests to pods that already have the right LoRA adapter loaded, turning multi-tenant LLM serving from a cache-thrashing nightmare into an efficient, swap-free pipeline.
+            </p>
+
+            <div class="meta">
+                <div class="meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/>
+                    </svg>
+                    <span class="author-name">Markell Rawls</span>
+                </div>
+                <div class="meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+                    </svg>
+                    <span>June 2026</span>
+                </div>
+                <div class="meta-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+                    </svg>
+                    <span>14 min read</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="content-wrapper">
+
+        <!-- Table of Contents -->
+        <nav class="toc">
+            <div class="toc-title">Table of Contents</div>
+            <ol>
+                <li><a href="#lora-matters">Why LoRA Matters for Multi-Tenant LLM Serving</a></li>
+                <li><a href="#swap-problem">The Adapter Swap Problem at Scale</a></li>
+                <li><a href="#epp-scoring">How llm-d's EPP Scores Adapter Affinity</a></li>
+                <li><a href="#use-cases">Real-World Use Cases</a></li>
+                <li><a href="#disaggregated">Cache-Aware LoRA Routing with Disaggregated Prefill/Decode</a></li>
+                <li><a href="#try-it">Try It Yourself</a></li>
+            </ol>
+        </nav>
+
+        <!-- Section 1 -->
+        <section id="lora-matters">
+            <h2>
+                <span class="section-number">01</span>
+                Why LoRA Matters for Multi-Tenant LLM Serving
+            </h2>
+
+            <p>
+                Running a single large language model for a single purpose is, relatively speaking, a solved problem. The real challenge begins when you need to serve <strong>dozens or hundreds of specialized variants</strong> of that model to different customers, all from the same GPU fleet. This is the reality of multi-tenant LLM platforms, and it is where LoRA becomes not just useful but essential.
+            </p>
+
+            <h3>What LoRA Actually Does</h3>
+
+            <p>
+                <strong>Low-Rank Adaptation (LoRA)</strong> is a parameter-efficient fine-tuning method introduced by <a href="https://arxiv.org/abs/2106.09685" target="_blank" rel="noopener">Hu et al. (2021)</a>. Instead of updating all the billions of parameters in a large language model during fine-tuning, LoRA freezes the pre-trained weights and injects small, trainable rank-decomposition matrices into each transformer layer. During inference, these matrices are applied as lightweight modifications to the base model's behavior.
+            </p>
+
+            <p>
+                The key insight is dimensional: a weight matrix in a 70B-parameter model might have dimensions of 8192 &times; 8192 (67 million parameters per layer). A LoRA adapter with rank 16 replaces this with two matrices of dimensions 8192 &times; 16 and 16 &times; 8192 &mdash; just 262,144 parameters. That is a <strong>99.6% reduction</strong> in trainable parameters per layer.
+            </p>
+
+            <div class="callout">
+                <div class="callout-label">Key Insight</div>
+                <p>
+                    A LoRA adapter for a 70B-parameter model is typically <strong>10&ndash;100 MB</strong> in size, compared to <strong>140 GB</strong> for the full model weights. That is 0.01&ndash;0.07% of the base model &mdash; small enough to store hundreds of adapters on a single node.
+                </p>
+            </div>
+
+            <h3>The Multi-Tenant Economics</h3>
+
+            <p>
+                Consider a platform serving 50 enterprise customers, each requiring their own fine-tuned model. Without LoRA, you have two unpleasant options:
+            </p>
+
+            <ul>
+                <li><strong>50 full model copies:</strong> At 140 GB per model (for a 70B at FP16), that is 7 TB of GPU memory just for weights. Even with the largest available GPUs, you are looking at dozens of nodes dedicated purely to storing redundant copies of nearly identical models.</li>
+                <li><strong>One model, no customization:</strong> You sacrifice the specialization that customers are paying for.</li>
+            </ul>
+
+            <p>
+                LoRA provides a third path: <strong>one base model plus 50 adapters</strong>. The base model occupies its 140 GB once. Each adapter adds 10&ndash;100 MB. Even at the upper bound, all 50 adapters together consume only 5 GB &mdash; less than 4% of the base model. The economics shift from "linear cost scaling per customer" to "near-zero marginal cost per customer."
+            </p>
+
+            <table class="comparison">
+                <thead>
+                    <tr>
+                        <th>Approach</th>
+                        <th>GPU Memory</th>
+                        <th>Cost / Customer</th>
+                        <th>Customization</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Full fine-tuned copies</td>
+                        <td class="metric-bad">140 GB &times; N</td>
+                        <td class="metric-bad">High (linear)</td>
+                        <td class="metric-good">Full</td>
+                    </tr>
+                    <tr>
+                        <td>Shared base, no adapters</td>
+                        <td class="metric-good">140 GB &times; 1</td>
+                        <td class="metric-good">Fixed</td>
+                        <td class="metric-bad">None</td>
+                    </tr>
+                    <tr>
+                        <td>Base + LoRA adapters</td>
+                        <td class="metric-good">~145 GB total</td>
+                        <td class="metric-good">Near-zero marginal</td>
+                        <td class="metric-good">Full</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <p>
+                Serving engines like <a href="https://github.com/vllm-project/vllm" target="_blank" rel="noopener">vLLM</a> have made multi-LoRA serving practical by supporting hot-loading of adapters and batching requests across different LoRA variants within the same inference batch. A single vLLM instance can serve multiple adapters simultaneously, dynamically loading and unloading them as demand shifts.
+            </p>
+
+            <p>
+                But the ability to serve multiple adapters per pod introduces a new problem: <strong>which pod should each request go to?</strong> When the routing layer does not understand adapter state, the answer is usually the wrong pod.
+            </p>
+        </section>
+
+        <!-- Section 2 -->
+        <section id="swap-problem">
+            <h2>
+                <span class="section-number">02</span>
+                The Adapter Swap Problem at Scale
+            </h2>
+
+            <p>
+                When a request arrives at a vLLM pod requesting LoRA adapter <code>legal-qa-v3</code>, but that pod currently has <code>medical-summary-v2</code> loaded, the serving engine must perform an <strong>adapter swap</strong>: unload the current adapter's weights from GPU memory and load the requested adapter from CPU memory or storage.
+            </p>
+
+            <h3>The Cost of a Single Swap</h3>
+
+            <p>
+                An adapter swap involves several steps, each with measurable latency:
+            </p>
+
+            <ol>
+                <li><strong>Deallocate</strong> the current adapter's weight matrices from GPU HBM &mdash; typically near-instant but can trigger memory compaction.</li>
+                <li><strong>Transfer</strong> the new adapter's weights from host memory (or NVMe, or network storage) to GPU HBM. For a 50 MB adapter over PCIe Gen4 x16, this takes approximately 1&ndash;3 ms. For a 500 MB adapter, 10&ndash;30 ms.</li>
+                <li><strong>Initialize</strong> the adapter in the serving engine's computation graph, including any necessary reshaping or memory layout adjustments.</li>
+            </ol>
+
+            <p>
+                End to end, a typical adapter swap on modern hardware takes <strong>50&ndash;200 ms</strong>, depending on adapter size, storage tier (GPU memory &rarr; CPU memory &rarr; NVMe), and whether the engine needs to drain its current batch before swapping.
+            </p>
+
+            <div class="callout callout-warning">
+                <div class="callout-label">The batch-draining penalty</div>
+                <p>
+                    Many serving engines cannot swap adapters mid-batch. If a pod is processing a batch of 32 requests for adapter A and receives a request for adapter B, it must either <strong>finish the entire batch before swapping</strong> (adding batch-completion latency) or <strong>hold the request in queue</strong> until the swap completes. Either way, the requesting user pays a delay far exceeding the raw swap time.
+                </p>
+            </div>
+
+            <h3>When Random Routing Meets Real Traffic</h3>
+
+            <p>
+                Consider a cluster of 8 vLLM pods serving 16 different LoRA adapters. With round-robin load balancing &mdash; the default for most Kubernetes ingress controllers &mdash; each pod receives a roughly uniform mix of requests across all 16 adapters.
+            </p>
+
+            <p>
+                If each pod can hold 2&ndash;4 adapters in GPU memory at once, a round-robin distribution means <strong>every pod swaps adapters on 75&ndash;87% of incoming requests</strong>. At 100 requests per second per pod, that translates to 75&ndash;87 swap events per second per pod.
+            </p>
+
+            <div class="diagram">
+                <div class="diagram-title">Naive Round-Robin: Every Pod Swaps Constantly</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div class="diagram-box warning" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 1 &mdash; has: legal-qa</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: medical &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 2: code-review &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 3: legal-qa &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: finance &rarr; <span style="color: #f87171;">SWAP</span>
+                        </div>
+                    </div>
+                    <div class="diagram-box warning" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 2 &mdash; has: medical</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: finance &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 2: legal-qa &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 3: code-review &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 4: medical &rarr; <span style="color: #4ade80;">HIT</span>
+                        </div>
+                    </div>
+                    <div class="diagram-box warning" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 3 &mdash; has: code-review</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: legal-qa &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 2: finance &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 3: medical &rarr; <span style="color: #f87171;">SWAP</span><br>
+                            req 4: code-review &rarr; <span style="color: #4ade80;">HIT</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="text-align: center; font-size: 0.8125rem; color: var(--text-muted); margin-top: 1.25rem; margin-bottom: 0;">
+                    Result: 75% of requests trigger an adapter swap &mdash; <strong style="color: #f87171;">9 swaps out of 12 requests</strong>
+                </p>
+            </div>
+
+            <h3>The CPU Context-Switching Analogy</h3>
+
+            <p>
+                Operating systems researchers discovered decades ago that naive process scheduling creates <strong>convoy effects</strong> &mdash; when the scheduler rotates through processes too aggressively, the system spends more time switching between processes than actually executing them. The same principle applies to adapter swaps.
+            </p>
+
+            <p>
+                Each individual swap might cost only 100 ms. But 80 swaps per second per pod means <strong>8 full seconds of swap overhead per second</strong> &mdash; obviously impossible, which means requests queue up, latencies spike, and throughput collapses. In practice, the system degrades to the point where GPU utilization plummets despite a full request queue, because the GPUs spend most of their time waiting for adapter weights to transfer.
+            </p>
+
+            <p>
+                The solution is the same one that fixed CPU scheduling: <strong>affinity-aware routing</strong>. Route requests to the pod that already has the right adapter loaded, and swap only when genuinely necessary. This is exactly what llm-d's Endpoint Picker does.
+            </p>
+        </section>
+
+        <!-- Section 3 -->
+        <section id="epp-scoring">
+            <h2>
+                <span class="section-number">03</span>
+                How llm-d's EPP Scores Adapter Affinity
+            </h2>
+
+            <p>
+                The <strong>Endpoint Picker (EPP)</strong> is llm-d's intelligent routing layer, implemented as an <a href="https://gateway-api.sigs.k8s.io/geps/gep-1742/" target="_blank" rel="noopener">ext-proc</a> filter in the Envoy-based Gateway API data path. When a request arrives, the EPP evaluates every available pod (endpoint) and assigns a composite score to determine the optimal routing target. In llm-d v0.5, adapter affinity was added as a first-class scoring signal.
+            </p>
+
+            <h3>The Multi-Factor Scoring Pipeline</h3>
+
+            <p>
+                The EPP does not route based on a single heuristic. Instead, it runs each candidate pod through a <strong>filter/scorer pipeline</strong> that evaluates multiple dimensions and produces a weighted composite score. The key scoring factors, in approximate order of weight:
+            </p>
+
+            <div class="score-visual">
+                <div class="score-bar-group">
+                    <span class="score-label">Adapter Affinity</span>
+                    <div class="score-track">
+                        <div class="score-fill high" style="width: 100%;"></div>
+                    </div>
+                    <span class="score-value">1.0</span>
+                </div>
+                <div class="score-bar-group">
+                    <span class="score-label">KV Cache Match</span>
+                    <div class="score-track">
+                        <div class="score-fill medium" style="width: 60%;"></div>
+                    </div>
+                    <span class="score-value">0.6</span>
+                </div>
+                <div class="score-bar-group">
+                    <span class="score-label">Queue Depth</span>
+                    <div class="score-track">
+                        <div class="score-fill low" style="width: 30%;"></div>
+                    </div>
+                    <span class="score-value">0.3</span>
+                </div>
+                <div class="score-bar-group">
+                    <span class="score-label">GPU Utilization</span>
+                    <div class="score-track">
+                        <div class="score-fill low" style="width: 20%;"></div>
+                    </div>
+                    <span class="score-value">0.2</span>
+                </div>
+            </div>
+
+            <p>
+                The relative weights are configurable, but the default hierarchy reflects a clear insight: <strong>avoiding an adapter swap is almost always more valuable than any other single optimization</strong>. The cost of swapping an adapter (50&ndash;200 ms of latency plus potential batch drain) dwarfs the cost difference between routing to a slightly more or less loaded pod.
+            </p>
+
+            <h3>How Adapter Affinity Scoring Works</h3>
+
+            <p>
+                Each vLLM pod periodically reports its state to the EPP, including which LoRA adapters are currently loaded in GPU memory. When a request arrives with an adapter specified (via the <code>model</code> field in the OpenAI-compatible API, which maps to a LoRA adapter name in vLLM), the EPP evaluates each pod:
+            </p>
+
+            <ul>
+                <li><strong>Adapter loaded and active:</strong> Full affinity score. The pod can serve the request immediately with zero swap overhead.</li>
+                <li><strong>Adapter loaded but inactive:</strong> High affinity score. The adapter is in GPU memory but not currently being used in the active batch &mdash; activation is near-instant.</li>
+                <li><strong>Adapter not loaded, capacity available:</strong> Partial affinity score. The pod has free adapter slots and can load the adapter without evicting another &mdash; a swap is needed but with no cascading eviction.</li>
+                <li><strong>Adapter not loaded, at capacity:</strong> Low affinity score. The pod must evict an existing adapter to make room, which could disrupt other request flows.</li>
+            </ul>
+
+            <pre><code><span class="code-label">conceptual</span><span style="color: #8b949e;">// Simplified view of the EPP scoring logic for adapter affinity</span>
+<span style="color: #ff7b72;">func</span> <span style="color: #d2a8ff;">scoreAdapterAffinity</span>(pod PodState, requestedAdapter <span style="color: #79c0ff;">string</span>) <span style="color: #79c0ff;">float64</span> {
+    <span style="color: #ff7b72;">if</span> pod.HasActiveAdapter(requestedAdapter) {
+        <span style="color: #ff7b72;">return</span> <span style="color: #79c0ff;">1.0</span>  <span style="color: #8b949e;">// Best case: already loaded and serving</span>
+    }
+    <span style="color: #ff7b72;">if</span> pod.HasCachedAdapter(requestedAdapter) {
+        <span style="color: #ff7b72;">return</span> <span style="color: #79c0ff;">0.8</span>  <span style="color: #8b949e;">// Loaded in memory, needs activation</span>
+    }
+    <span style="color: #ff7b72;">if</span> pod.HasAdapterCapacity() {
+        <span style="color: #ff7b72;">return</span> <span style="color: #79c0ff;">0.3</span>  <span style="color: #8b949e;">// Can load without evicting</span>
+    }
+    <span style="color: #ff7b72;">return</span> <span style="color: #79c0ff;">0.0</span>      <span style="color: #8b949e;">// Must evict to load</span>
+}</code></pre>
+
+            <h3>Composite Scoring in Practice</h3>
+
+            <p>
+                The adapter affinity score is combined with the other factors to produce a final routing decision. Conceptually:
+            </p>
+
+            <pre><code><span class="code-label">conceptual</span>score(pod) = w_adapter &times; adapterAffinity(pod)
+           + w_kvcache &times; kvCacheMatch(pod, request.prompt)
+           + w_queue   &times; (1 - normalize(pod.queueDepth))
+           + w_gpu     &times; (1 - normalize(pod.gpuUtilization))</code></pre>
+
+            <p>
+                The EPP selects the pod with the highest composite score. When multiple pods tie (for example, three pods all have the requested adapter loaded), the tie is broken by the secondary factors &mdash; KV cache hit rate, then queue depth. This means that among pods with the right adapter, traffic naturally flows to the one with the best cache locality and lowest load.
+            </p>
+
+            <h3>The Emergent Clustering Effect</h3>
+
+            <p>
+                An elegant property of affinity-aware routing is that it creates <strong>natural adapter clustering</strong> without explicit assignment. There is no static mapping of "adapter X always goes to pod Y." Instead, the first request for a given adapter goes to the least-loaded pod (since no pod has affinity). Subsequent requests for that adapter are routed to the same pod because it now has the highest affinity score. Over time, each pod accumulates a working set of 2&ndash;4 frequently-used adapters, and requests cluster accordingly.
+            </p>
+
+            <div class="diagram">
+                <div class="diagram-title">Affinity-Aware Routing: Natural Adapter Clustering</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-top: 1rem;">
+                    <div class="diagram-box success" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 1 &mdash; legal-qa, finance</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: legal-qa &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: legal-qa &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: finance &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: legal-qa &rarr; <span style="color: #4ade80;">HIT</span>
+                        </div>
+                    </div>
+                    <div class="diagram-box success" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 2 &mdash; medical, code-review</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: medical &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: code-review &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: medical &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: medical &rarr; <span style="color: #4ade80;">HIT</span>
+                        </div>
+                    </div>
+                    <div class="diagram-box success" style="text-align: left; padding: 1rem;">
+                        <div style="font-weight: 600; margin-bottom: 0.5rem; font-size: 0.8125rem;">Pod 3 &mdash; support, translate</div>
+                        <div style="font-size: 0.75rem; color: var(--text-muted);">
+                            req 1: support &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 2: translate &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 3: support &rarr; <span style="color: #4ade80;">HIT</span><br>
+                            req 4: support &rarr; <span style="color: #4ade80;">HIT</span>
+                        </div>
+                    </div>
+                </div>
+                <p style="text-align: center; font-size: 0.8125rem; color: var(--text-muted); margin-top: 1.25rem; margin-bottom: 0;">
+                    Result: 0% of requests trigger an adapter swap &mdash; <strong style="color: #4ade80;">12 hits out of 12 requests</strong>
+                </p>
+            </div>
+
+            <p>
+                This is self-healing, too. If a pod restarts and loses its adapter state, the EPP temporarily routes that adapter's traffic to other pods that still have it loaded. As the restarted pod begins receiving requests, it rebuilds its adapter working set organically.
+            </p>
+        </section>
+
+        <!-- Section 4 -->
+        <section id="use-cases">
+            <h2>
+                <span class="section-number">04</span>
+                Real-World Use Cases
+            </h2>
+
+            <p>
+                Cache-aware LoRA routing is not an abstract optimization. It unlocks specific architectural patterns that are impractical without intelligent adapter placement. Here are several production scenarios where this capability makes a material difference.
+            </p>
+
+            <h3>Multi-Customer SaaS Platforms</h3>
+
+            <p>
+                The most direct application is <strong>per-customer model customization</strong> on a shared infrastructure platform. A SaaS company offering AI-powered document processing might serve 200 enterprise customers, each with distinct requirements:
+            </p>
+
+            <ul>
+                <li><strong>Tone and style:</strong> Customer A wants formal, third-person outputs; Customer B wants concise, action-oriented bullet points.</li>
+                <li><strong>Domain vocabulary:</strong> A pharmaceutical company needs the model trained on its specific drug names, compound identifiers, and internal terminology.</li>
+                <li><strong>Compliance patterns:</strong> A financial services customer requires outputs that conform to specific regulatory disclosure formats.</li>
+                <li><strong>Language mix:</strong> Some customers operate primarily in English, others in German or Japanese, and fine-tuning on their specific bilingual patterns improves quality.</li>
+            </ul>
+
+            <p>
+                Each customer gets a LoRA adapter trained on their data and preferences. With cache-aware routing, the platform can serve all 200 customers from a modest GPU fleet, with each pod naturally specializing in a cluster of related customers. The routing is entirely transparent &mdash; customers send requests to a single API endpoint, and the EPP handles placement.
+            </p>
+
+            <h3>Domain-Specific Assistant Suites</h3>
+
+            <p>
+                Organizations increasingly deploy <strong>multiple specialized AI assistants</strong> rather than one general-purpose chatbot. A hospital system might run:
+            </p>
+
+            <ul>
+                <li><code>clinical-notes-v2</code> &mdash; generates structured clinical documentation from physician dictation</li>
+                <li><code>patient-qa-v1</code> &mdash; answers patient questions in accessible, non-technical language</li>
+                <li><code>radiology-report-v3</code> &mdash; produces standardized radiology reports from findings</li>
+                <li><code>billing-code-v1</code> &mdash; suggests ICD-10 and CPT codes from clinical notes</li>
+            </ul>
+
+            <p>
+                All four assistants share the same base model (for example, Llama 3.1 70B) with different LoRA adapters. With cache-aware routing, the EPP clusters clinical-notes and radiology-report traffic to the same pods (both are physician-facing, high-volume during morning rounds), while patient-qa traffic routes to pods that are less loaded during clinical hours but busier during evening patient portal usage.
+            </p>
+
+            <h3>A/B Testing and Canary Deployments</h3>
+
+            <p>
+                LoRA adapters make <strong>model experimentation</strong> operationally lightweight. To A/B test a new fine-tuning approach:
+            </p>
+
+            <ol>
+                <li>Deploy the new adapter alongside the existing one: <code>legal-qa-v3</code> (current) and <code>legal-qa-v4-candidate</code> (new).</li>
+                <li>Configure the request gateway to label 10% of traffic with the candidate adapter name.</li>
+                <li>The EPP naturally routes candidate traffic to one or two pods that load the new adapter, while the other pods continue serving the current version undisturbed.</li>
+                <li>Compare quality metrics. If the candidate wins, gradually shift traffic. If it loses, remove the adapter &mdash; no pods were disrupted beyond the test group.</li>
+            </ol>
+
+            <p>
+                Without cache-aware routing, a 10% canary deployment would contaminate every pod with swap overhead for the candidate adapter, degrading performance for the 90% of traffic on the stable version. With the EPP's affinity scoring, the blast radius is contained.
+            </p>
+
+            <h3>Regional and Regulatory Adapters</h3>
+
+            <p>
+                Global deployments often need <strong>region-specific model behavior</strong>. A content moderation system might use different adapters for different regulatory environments:
+            </p>
+
+            <ul>
+                <li><code>moderation-eu-v2</code> &mdash; tuned for EU Digital Services Act requirements, stricter on certain content categories</li>
+                <li><code>moderation-us-v2</code> &mdash; tuned for US content policies with different thresholds</li>
+                <li><code>moderation-apac-v1</code> &mdash; handles CJK-language content with specialized tokenization awareness</li>
+            </ul>
+
+            <p>
+                Traffic from each region naturally clusters by adapter, and the EPP ensures that EU traffic consistently routes to pods with the EU adapter loaded. This is particularly valuable when combined with data residency requirements &mdash; pods in EU regions can be pre-warmed with the EU adapter, and the EPP's affinity scoring keeps traffic pinned there without hard-coding routing rules.
+            </p>
+        </section>
+
+        <!-- Section 5 -->
+        <section id="disaggregated">
+            <h2>
+                <span class="section-number">05</span>
+                Cache-Aware LoRA Routing with Disaggregated Prefill/Decode
+            </h2>
+
+            <p>
+                llm-d's architecture supports <strong>prefill/decode (P/D) disaggregation</strong> &mdash; a technique that separates the two phases of LLM inference onto different GPU pools. This section explores how LoRA routing interacts with disaggregated inference and why the combination is particularly powerful.
+            </p>
+
+            <h3>Understanding Prefill/Decode Disaggregation</h3>
+
+            <p>
+                LLM inference has two distinct computational phases with very different resource profiles:
+            </p>
+
+            <ul>
+                <li><strong>Prefill</strong> processes the entire input prompt in parallel. It is compute-bound (high FLOPS utilization, high arithmetic intensity) and runs once per request. For a 4,096-token prompt on a 70B model, prefill might take 500&ndash;1,500 ms.</li>
+                <li><strong>Decode</strong> generates output tokens one at a time (or a few at a time with speculative decoding). It is memory-bandwidth-bound (low arithmetic intensity, dominated by weight reads) and runs for every output token.</li>
+            </ul>
+
+            <p>
+                When both phases run on the same GPU, they compete for resources inefficiently. Prefill wants high compute utilization; decode wants high memory bandwidth. Disaggregation assigns each phase to GPU pools optimized for its workload profile, connected by a KV cache transfer mechanism.
+            </p>
+
+            <div class="diagram">
+                <div class="diagram-title">Disaggregated Prefill/Decode with LoRA Routing</div>
+                <div class="diagram-flow">
+                    <div class="diagram-box">Request<br><small style="color: var(--text-muted);">adapter: legal-qa</small></div>
+                    <div class="diagram-arrow">&rarr;</div>
+                    <div class="diagram-box highlight">EPP<br><small>route by affinity</small></div>
+                    <div class="diagram-arrow">&rarr;</div>
+                    <div class="diagram-box success">Prefill Pod<br><small>has: legal-qa</small></div>
+                    <div class="diagram-arrow">&rarr;</div>
+                    <div class="diagram-box" style="font-size: 0.75rem;">KV Cache<br>Transfer</div>
+                    <div class="diagram-arrow">&rarr;</div>
+                    <div class="diagram-box success">Decode Pod<br><small>has: legal-qa</small></div>
+                </div>
+            </div>
+
+            <h3>The LoRA Routing Challenge in P/D</h3>
+
+            <p>
+                Disaggregation adds a layer of complexity to LoRA routing because <strong>both the prefill and decode pods need the correct adapter loaded</strong>:
+            </p>
+
+            <ul>
+                <li>The <strong>prefill pod</strong> needs the adapter to correctly compute the key-value cache entries for the input prompt. LoRA modifies the attention projections, so the KV cache produced by prefill must reflect the adapter's weight modifications.</li>
+                <li>The <strong>decode pod</strong> needs the same adapter to generate output tokens that are consistent with the adapted model's behavior. It also needs the adapter to correctly compute each new KV cache entry during autoregressive generation.</li>
+            </ul>
+
+            <p>
+                If the routing layer sends a request to a prefill pod with the right adapter but a decode pod without it, the decode pod must swap adapters mid-stream &mdash; paying the swap penalty at the worst possible time, when the user is waiting for token-by-token output.
+            </p>
+
+            <h3>How llm-d Handles This</h3>
+
+            <p>
+                The EPP's routing pipeline is P/D-aware. When disaggregated serving is enabled, the routing decision considers adapter affinity at both stages:
+            </p>
+
+            <ol>
+                <li><strong>Prefill routing:</strong> The EPP selects a prefill pod using the standard composite score, with adapter affinity as the dominant factor. This ensures the KV cache is computed with the correct adapter applied.</li>
+                <li><strong>KV cache transfer:</strong> After prefill completes, the computed KV cache is transferred to a decode pod. The EPP coordinates this handoff, selecting a decode pod that already has the same adapter loaded.</li>
+                <li><strong>Decode routing:</strong> The selected decode pod has both the KV cache (received from the prefill pod) and the correct adapter. Generation proceeds without any swap overhead.</li>
+            </ol>
+
+            <p>
+                The adapter affinity signal propagates through the entire pipeline. This means the EPP effectively maintains <strong>two adapter affinity maps</strong> &mdash; one for the prefill pool and one for the decode pool &mdash; and ensures both phases of a request land on pods with the correct adapter.
+            </p>
+
+            <div class="callout">
+                <div class="callout-label">Performance Impact</div>
+                <p>
+                    The combination of P/D disaggregation with cache-aware LoRA routing yields compounding benefits. Disaggregation alone can improve throughput by 30&ndash;60% for mixed workloads. Adding adapter-aware routing eliminates the swap overhead that would otherwise erode those gains in multi-adapter scenarios. Together, they enable <strong>higher GPU utilization, lower tail latency (P99), and more predictable per-request performance</strong> even as the number of active adapters grows.
+                </p>
+            </div>
+
+            <h3>Why This Combination Matters at Scale</h3>
+
+            <p>
+                Without P/D disaggregation, a large multi-adapter deployment faces a tension: you want pods to specialize on a small set of adapters (for affinity), but you also want to balance compute load evenly (for utilization). A pod that has become the "legal-qa specialist" might be overwhelmed during a burst of legal traffic while other pods sit idle.
+            </p>
+
+            <p>
+                Disaggregation relaxes this tension. Prefill pods can be more aggressively specialized by adapter (since prefill is a short, bursty operation), while decode pods can be more flexibly scheduled (since decode is a longer, bandwidth-bound operation that benefits from batching across multiple concurrent requests). The EPP manages the balance automatically, using adapter affinity as the primary signal at both stages while allowing load balancing to act as the tiebreaker.
+            </p>
+        </section>
+
+        <!-- Section 6 -->
+        <section id="try-it">
+            <h2>
+                <span class="section-number">06</span>
+                Try It Yourself
+            </h2>
+
+            <p>
+                Reading about adapter swap overhead is one thing. Watching it happen is another. We built an <strong>interactive visualizer</strong> that lets you see cache-aware LoRA routing in action &mdash; you can add pods, create adapters, fire requests, and observe how the EPP's affinity scoring eliminates swaps that naive routing would cause.
+            </p>
+
+            <div class="cta-section">
+                <h3>Interactive LoRA Routing Visualizer</h3>
+                <p>
+                    Watch requests flow through llm-d's Endpoint Picker in real time. Add adapters, adjust scoring weights, and see the difference between cache-aware and round-robin routing.
+                </p>
+                <a href="../index.html" class="cta-button">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="5 3 19 12 5 21 5 3"/>
+                    </svg>
+                    Launch the Visualizer
+                </a>
+            </div>
+
+            <p>
+                Here are a few experiments to try:
+            </p>
+
+            <ul>
+                <li><strong>Start small:</strong> Create 3 pods and 3 adapters. Send a burst of requests and watch how adapters naturally cluster to specific pods after the initial placement.</li>
+                <li><strong>Scale the adapters:</strong> Add 10+ adapters with only 4 pods. Observe how the EPP manages adapter eviction and how the swap count stays low even as the adapter-to-pod ratio increases.</li>
+                <li><strong>Compare routing modes:</strong> Toggle between cache-aware routing and round-robin. Watch the swap counter. The difference is dramatic.</li>
+                <li><strong>Simulate a burst:</strong> Send a sudden spike of requests for a single adapter and observe how the EPP balances affinity against load &mdash; it will route to the affinity pod first, then spill to other pods only when queue depth gets too high.</li>
+            </ul>
+        </section>
+
+        <!-- Final CTA -->
+        <div class="cta-section" style="background: var(--bg-secondary); border-color: var(--border);">
+            <h3>Learn More About llm-d</h3>
+            <p>
+                llm-d is a CNCF Sandbox project for distributed LLM inference on Kubernetes. Cache-aware LoRA routing is just one of its capabilities.
+            </p>
+            <a href="https://github.com/llm-d" class="cta-button" target="_blank" rel="noopener" style="background: var(--bg-tertiary); border: 1px solid var(--border-light);">
+                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/>
+                </svg>
+                Visit llm-d on GitHub
+            </a>
+        </div>
+
+        <!-- Author Card -->
+        <div class="author-card">
+            <div class="author-avatar">MR</div>
+            <div class="author-info">
+                <h4>Markell Rawls</h4>
+                <p>AI Evangelist focused on scalability and distributed inference. Working on llm-d and the future of multi-tenant LLM serving on Kubernetes.</p>
+            </div>
+        </div>
+
+    </main>
+
+    <footer>
+        <p>
+            <a href="https://github.com/llm-d" target="_blank" rel="noopener">llm-d</a> is a
+            <a href="https://www.cncf.io/projects/" target="_blank" rel="noopener">CNCF Sandbox</a> project.
+        </p>
+    </footer>
+
+</body>
+</html>
