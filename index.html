@@ -704,17 +704,17 @@ spec:
     function init() {
       dim = sizeCanvas(canvas);
       gpuPods = [
-        { x: dim.w * 0.12, y: dim.h * 0.28, label: 'Legal GPU', util: 0.25 },
-        { x: dim.w * 0.30, y: dim.h * 0.22, label: 'Medical GPU', util: 0.32 },
-        { x: dim.w * 0.50, y: dim.h * 0.30, label: 'Code GPU', util: 0.20 },
-        { x: dim.w * 0.70, y: dim.h * 0.24, label: 'Support GPU', util: 0.38 },
-        { x: dim.w * 0.88, y: dim.h * 0.28, label: 'Finance GPU', util: 0.22 }
+        { x: dim.w * 0.12, y: dim.h * 0.52, label: 'Legal GPU', util: 0.25 },
+        { x: dim.w * 0.30, y: dim.h * 0.46, label: 'Medical GPU', util: 0.32 },
+        { x: dim.w * 0.50, y: dim.h * 0.54, label: 'Code GPU', util: 0.20 },
+        { x: dim.w * 0.70, y: dim.h * 0.48, label: 'Support GPU', util: 0.38 },
+        { x: dim.w * 0.88, y: dim.h * 0.52, label: 'Finance GPU', util: 0.22 }
       ];
       requests = [];
       for (var i = 0; i < 15; i++) {
         requests.push({
           x: dim.w * 0.08 + Math.random() * dim.w * 0.84,
-          y: dim.h * 0.48 + Math.random() * dim.h * 0.38,
+          y: dim.h * 0.65 + Math.random() * dim.h * 0.28,
           speedX: (Math.random() - 0.5) * 0.6,
           speedY: (Math.random() - 0.5) * 0.5,
           size: 3 + Math.random() * 5,
@@ -733,7 +733,7 @@ spec:
 
       /* GPU Memory overflow bar */
       var barX = dim.w * 0.06;
-      var barY = dim.h * 0.68;
+      var barY = dim.h * 0.82;
       var barW = dim.w * 0.88;
       var barH = 22;
       var fillFrac = 0.88 + 0.05 * Math.sin(warningTime * 1.1);
@@ -765,8 +765,8 @@ spec:
       ctx.save();
       ctx.fillStyle = 'rgba(225,29,72,' + pulse * 0.8 + ')';
       ctx.font = '700 11px "Red Hat Display", sans-serif';
-      ctx.textAlign = 'left';
-      ctx.fillText('OVERFLOW RISK', barX + barW + 12, barY + 15);
+      ctx.textAlign = 'right';
+      ctx.fillText('OVERFLOW RISK', barX + barW - 8, barY - 8);
       ctx.restore();
 
       /* GPU Pod boxes with warning pulse */
@@ -819,7 +819,7 @@ spec:
         req.x += req.speedX;
         req.y += req.speedY;
         if (req.x < 15 || req.x > dim.w - 15) req.speedX *= -1;
-        if (req.y < dim.h * 0.42 || req.y > dim.h * 0.96) req.speedY *= -1;
+        if (req.y < dim.h * 0.62 || req.y > dim.h * 0.96) req.speedY *= -1;
 
         /* Glow trail */
         ctx.save();
