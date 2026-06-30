@@ -779,6 +779,215 @@
             font-weight: 700;
         }
 
+        /* TL;DR callout box */
+        .tldr-box {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.10), rgba(59, 130, 246, 0.03));
+            border-left: 4px solid var(--accent);
+            border-radius: 0 12px 12px 0;
+            padding: 1.75rem 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .tldr-box .tldr-label {
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 1rem;
+        }
+
+        .tldr-box ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 0;
+        }
+
+        .tldr-box ul li {
+            position: relative;
+            padding-left: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .tldr-box ul li:last-child {
+            margin-bottom: 0;
+        }
+
+        .tldr-box ul li::before {
+            content: '\25B8';
+            position: absolute;
+            left: 0;
+            color: var(--accent-light);
+            font-size: 1rem;
+        }
+
+        /* Key Takeaway boxes */
+        .key-takeaway {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(139, 92, 246, 0.02));
+            border-left: 3px solid #8b5cf6;
+            border-radius: 0 8px 8px 0;
+            padding: 1.25rem 1.5rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .key-takeaway .key-takeaway-label {
+            font-size: 0.6875rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #a78bfa;
+            margin-bottom: 0.5rem;
+        }
+
+        .key-takeaway p {
+            color: var(--text-secondary);
+            margin-bottom: 0;
+            font-size: 0.9375rem;
+            line-height: 1.7;
+        }
+
+        /* Heading anchor links */
+        h2, h3 {
+            position: relative;
+        }
+
+        .heading-anchor {
+            position: absolute;
+            left: -1.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            text-decoration: none;
+            font-size: 0.875rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+            font-weight: 400;
+        }
+
+        .heading-anchor:hover {
+            color: var(--accent-light);
+            text-decoration: none;
+        }
+
+        h2:hover .heading-anchor,
+        h3:hover .heading-anchor {
+            opacity: 1;
+        }
+
+        h2 .heading-anchor {
+            top: auto;
+            bottom: 0.25rem;
+            transform: none;
+        }
+
+        /* Fade-in animations */
+        .fade-in-section {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+        }
+
+        .fade-in-section.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Glossary */
+        .glossary-section {
+            margin-top: 3.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .glossary-section h2 {
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+        }
+
+        .glossary-list {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+
+        .glossary-list li {
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 0;
+        }
+
+        .glossary-list li:last-child {
+            border-bottom: none;
+        }
+
+        .glossary-term {
+            font-family: var(--font-mono);
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--accent-light);
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .glossary-def {
+            color: var(--text-secondary);
+            font-size: 0.9375rem;
+            line-height: 1.6;
+            margin-bottom: 0;
+        }
+
+        /* Further Reading grid */
+        .further-reading-section {
+            margin-top: 3rem;
+            margin-bottom: 3rem;
+        }
+
+        .further-reading-section h2 {
+            border-top: 1px solid var(--border);
+            padding-top: 2rem;
+        }
+
+        .further-reading-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .further-reading-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            text-decoration: none;
+            transition: border-color 0.2s, transform 0.15s;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .further-reading-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-2px);
+            text-decoration: none;
+        }
+
+        .further-reading-card .fr-title {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .further-reading-card .fr-url {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            word-break: break-all;
+        }
+
         @media (max-width: 640px) {
             body { font-size: 16px; }
             .hero { padding: 2rem 1rem 1.75rem; }
@@ -794,6 +1003,9 @@
             .comparison th, .comparison td { padding: 0.5rem 0.625rem; }
             .results-grid { grid-template-columns: 1fr; }
             .savings-grid { grid-template-columns: 1fr; gap: 1rem; }
+            .heading-anchor { display: none; }
+            .further-reading-grid { grid-template-columns: 1fr; }
+            .tldr-box { padding: 1.25rem 1.25rem; }
         }
     </style>
 </head>
@@ -842,6 +1054,16 @@
     </header>
 
     <main class="content-wrapper">
+
+        <!-- TL;DR -->
+        <div class="tldr-box">
+            <div class="tldr-label">TL;DR</div>
+            <ul>
+                <li>LoRA adapters let you serve dozens of specialized models from a single base model, but naive round-robin routing causes 65-84% adapter swap rates that destroy latency.</li>
+                <li>The EPP (Endpoint Picker) uses a 4-signal scoring function (adapter affinity, KV cache, load, GPU health) to route requests to the right pod, cutting swap rates to under 10%.</li>
+                <li>At 12+ adapters, shared serving with EPP routing saves 64% on GPU costs vs. deploying separate model instances.</li>
+            </ul>
+        </div>
 
         <!-- Section 1: LoRA Mechanics -->
         <section id="lora-mechanics">
@@ -916,6 +1138,11 @@ Output</code></pre>
             <p>
                 The critical implication: the KV cache produced during prefill is <strong>adapter-specific</strong>. Key and value tensors reflect the adapted weight matrices. If you use a different adapter during decode, the KV cache entries are inconsistent and the output is garbage. Both prefill and decode pods must have the same adapter loaded. We'll come back to this in Section 11.
             </p>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>LoRA adds trainable low-rank matrices (typically 0.1% of base model parameters) that modify attention projections without changing the base model weights.</p>
+            </div>
         </section>
 
         <!-- Section 2: LoRA Mathematics Deep Dive -->
@@ -1062,6 +1289,11 @@ Rank-64 adapter (Q + K + V):
                     Some tools offer INT4 or INT8 quantization for LoRA weights. In our testing, INT4 adapter quantization degrades output quality by 8-15% on task-specific benchmarks (measured by accuracy on held-out evaluation sets). The memory savings are trivial -- a 65 MB adapter becomes 16 MB, saving 49 MB on a GPU with 80 GB of HBM. That is 0.06% of your memory budget. Not worth it.
                 </p>
             </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>At rank 16, a LoRA adapter for a 70B model is only ~65 MB but modifies every attention computation. The overhead per token is negligible; the swap cost is not.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -1152,6 +1384,11 @@ Pod C:   [serving][serving][serving][drain..][swap....][warmup.....]
             <p>
                 This is the problem that cache-aware routing exists to solve.
             </p>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Adapter swaps take 200-1200ms through 5 phases: batch drain, weight deallocation, weight transfer, initialization, and warmup. This is the cost EPP routing eliminates.</p>
+            </div>
         </section>
 
         <!-- War Story -->
@@ -1343,6 +1580,11 @@ Winner: Pod-02 (0.797 vs 0.282)</code></pre>
             <p>
                 This clustering is self-healing. If a pod restarts and loses its adapter state, the EPP reroutes that adapter's traffic to other pods that still have it loaded. As the restarted pod receives requests, it rebuilds its working set organically. No operator intervention.
             </p>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>The EPP scores each pod with a weighted composite of adapter_affinity (0.50), kv_cache (0.20), queue_load (0.15), and gpu_health (0.15), picking the highest scorer.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -1410,6 +1652,11 @@ Example (H100 80GB, INT4 70B model):
             <p>
                 <strong>Pin your top 5 adapters. Make it part of your deployment checklist.</strong> Look at your request logs from the last 30 days, sort by adapter request count, and pin the top 5 across enough pods to handle their peak traffic. This single step eliminates 50-70% of all adapter swaps in a typical deployment. Ten minutes of configuration saves hours of incident response.
             </p>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>vLLM can hold multiple adapters in GPU memory simultaneously, using LoRA-specific CUDA kernels to batch requests across different adapters in a single forward pass.</p>
+            </div>
         </section>
 
         <!-- Section 6: Adapter Lifecycle Management -->
@@ -1530,6 +1777,11 @@ LFU fails when:
             <p>
                 If your adapter residency time is under 5 minutes, you are thrashing. Fix it before adding more adapters. Either increase adapter slots (more GPU memory), reduce adapter count (consolidate adapters), or add more pods (spread the load).
             </p>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Production adapter management requires tiered storage (GPU hot, CPU warm, NVMe cold), LRU eviction, and preloading based on traffic patterns.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -1582,6 +1834,11 @@ LFU fails when:
                 <li><strong>Swap queue depth:</strong> Consistently non-zero = swap latency is your bottleneck.</li>
                 <li><strong>Active adapter count vs. slot capacity:</strong> If active adapters exceed 80% of total cluster slots, you're one traffic shift away from a cascade.</li>
             </ul>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Time-of-day preloading, tenant isolation, and session affinity are the three patterns that produce the biggest wins in production deployments.</p>
+            </div>
         </section>
 
         <!-- Section 8: War Story - Cache Thrashing -->
@@ -1740,6 +1997,11 @@ Swap rate: 0.04/s/pod --> 0.8/s/pod --> 1.8/s/pod</code></pre>
                     <strong>5. Size your adapter slots for your peak adapter count, not your average.</strong> If you run 40 adapters normally but might run 60 during an A/B test, provision for 60. The marginal cost of extra slots (a few hundred MB of GPU memory) is nothing compared to a 4-hour incident.
                 </p>
             </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>A 73% swap rate with convoy effects caused P95 latency to spike from 400ms to over 2 seconds. EPP routing dropped swaps to 8% with zero hardware changes.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -1862,6 +2124,11 @@ Swap rate: 0.04/s/pod --> 0.8/s/pod --> 1.8/s/pod</code></pre>
                     <span class="scorecard-score" style="color: #4ade80;">7/8</span>
                 </div>
             </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Punica, S-LoRA, and dLoRA optimize within a single node. The EPP adds the cluster-level routing intelligence that none of them provide.</p>
+            </div>
         </section>
 
         <!-- Section 10: Case Studies -->
@@ -1944,6 +2211,11 @@ Swap rate: 0.04/s/pod --> 0.8/s/pod --> 1.8/s/pod</code></pre>
                     When users stick to one adapter per session (multi-turn conversations, iterative research), combining adapter affinity with session stickiness produces compounding benefits. The first request routes by adapter affinity. Subsequent requests inherit both adapter and KV cache affinity. This is the ideal case for any conversational or research workflow.
                 </p>
             </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Multi-tenant SaaS saw 50% throughput increase and 73% to 8% swap rate. Legal research saw cold-start latency drop from 1.2s to 180ms.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -2005,6 +2277,11 @@ Swap rate: 0.04/s/pod --> 0.8/s/pod --> 1.8/s/pod</code></pre>
                 <p>
                     20 active adapters, 8-pod cluster (4 prefill, 4 decode). P/D disaggregation + EPP adapter-affinity routing achieved <strong>2.3x higher throughput</strong> and <strong>65% lower P99 latency</strong> vs. colocated serving with round-robin routing. Neither optimization alone exceeded 1.5x throughput.
                 </p>
+            </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>Combining P/D disaggregation with adapter-affinity routing achieves 2.3x throughput and 65% lower P99 vs. colocated round-robin. Neither optimization alone exceeds 1.5x.</p>
             </div>
         </section>
 
@@ -2158,6 +2435,11 @@ Cost:
                     If you have more than 3 adapters, you need cache-aware routing. The cost savings alone justify the complexity. At 12+ adapters, separate deployments waste more money on idle GPU memory than most teams spend on their entire ML infrastructure.
                 </p>
             </div>
+
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>At 12 adapters, shared serving saves $275,940/year (64% reduction). The break-even is around 3 adapters.</p>
+            </div>
         </section>
 
         <hr class="section-divider">
@@ -2211,6 +2493,10 @@ At $2.50/GPU-hr: $15.75/day = $5,750/year</code></pre>
                     That's one fewer H100 you need in your cluster. Per deployment.
                 </div>
             </div>
+            <div class="key-takeaway">
+                <div class="key-takeaway-label">Key Takeaway</div>
+                <p>EPP routing saves 6.3 GPU-hours per day on swap waste alone, translating to $5,750/year per deployment at $2.50/GPU-hr.</p>
+            </div>
         </section>
 
         <!-- Visualizer CTA -->
@@ -2250,6 +2536,84 @@ At $2.50/GPU-hr: $15.75/day = $5,750/year</code></pre>
             </div>
         </div>
 
+        <!-- Glossary -->
+        <div class="glossary-section" id="glossary">
+            <h2>Glossary of LoRA Terms</h2>
+            <ul class="glossary-list">
+                <li>
+                    <span class="glossary-term">LoRA (Low-Rank Adaptation)</span>
+                    <span class="glossary-def">Parameter-efficient fine-tuning that adds small trainable matrices to frozen base model weights.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Rank (r)</span>
+                    <span class="glossary-def">The inner dimension of LoRA matrices; controls capacity vs. size tradeoff (common values: 8, 16, 32, 64).</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Alpha</span>
+                    <span class="glossary-def">Scaling factor applied to LoRA output; higher alpha amplifies the adapter's effect on the base model.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Adapter Swap</span>
+                    <span class="glossary-def">The process of unloading one LoRA adapter's weights from GPU memory and loading another; typically 200-1200ms.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">EPP (Endpoint Picker)</span>
+                    <span class="glossary-def">llm-d's intelligent request router that scores pods using adapter affinity, KV cache, load, and GPU health signals.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Adapter Affinity</span>
+                    <span class="glossary-def">Routing preference for pods that already have the requested adapter loaded in GPU memory.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">KV Cache</span>
+                    <span class="glossary-def">Key-Value cache storing intermediate attention computations; adapter-specific because LoRA modifies Q, K, V projections.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Swap Penalty</span>
+                    <span class="glossary-def">The total latency cost of an adapter swap, including batch drain, weight transfer, initialization, and warmup phases.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Multi-adapter Batching</span>
+                    <span class="glossary-def">Serving requests for different adapters in the same GPU batch using specialized CUDA kernels.</span>
+                </li>
+                <li>
+                    <span class="glossary-term">Tiered Storage</span>
+                    <span class="glossary-def">Organizing adapters across GPU (hot), CPU (warm), and NVMe (cold) storage tiers for efficient memory management.</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Further Reading -->
+        <div class="further-reading-section" id="further-reading">
+            <h2>Further Reading</h2>
+            <div class="further-reading-grid">
+                <a href="https://llm-d.ai" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">llm-d Documentation</span>
+                    <span class="fr-url">llm-d.ai</span>
+                </a>
+                <a href="https://github.com/llm-d" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">llm-d GitHub</span>
+                    <span class="fr-url">github.com/llm-d</span>
+                </a>
+                <a href="https://docs.vllm.ai" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">vLLM Documentation</span>
+                    <span class="fr-url">docs.vllm.ai</span>
+                </a>
+                <a href="https://arxiv.org/abs/2106.09685" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">LoRA Paper (Hu et al.)</span>
+                    <span class="fr-url">arxiv.org/abs/2106.09685</span>
+                </a>
+                <a href="https://www.cncf.io/sandbox-projects/" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">CNCF Sandbox Projects</span>
+                    <span class="fr-url">cncf.io/sandbox-projects</span>
+                </a>
+                <a href="https://markellr-redhat.github.io/llm-d-content-hub/" class="further-reading-card" target="_blank" rel="noopener">
+                    <span class="fr-title">llm-d Content Hub</span>
+                    <span class="fr-url">markellr-redhat.github.io/llm-d-content-hub</span>
+                </a>
+            </div>
+        </div>
+
     </main>
 
     <footer>
@@ -2258,6 +2622,57 @@ At $2.50/GPU-hr: $15.75/day = $5,750/year</code></pre>
             <a href="https://www.cncf.io/projects/" target="_blank" rel="noopener">CNCF Sandbox</a> project.
         </p>
     </footer>
+
+    <script>
+    (function() {
+        // Add anchor links to all h2 and h3 headings inside sections with IDs
+        document.querySelectorAll('section[id] h2, section[id] h3, .glossary-section h2, .further-reading-section h2').forEach(function(heading) {
+            var section = heading.closest('section[id], .glossary-section[id], .further-reading-section[id]');
+            if (!section) return;
+            var id = section.id;
+            // For h3s, create a unique id if not present
+            if (heading.tagName === 'H3' && !heading.id) {
+                var slug = heading.textContent.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '-').toLowerCase().substring(0, 60);
+                heading.id = slug;
+                id = slug;
+            } else if (heading.tagName === 'H3' && heading.id) {
+                id = heading.id;
+            }
+            var anchor = document.createElement('a');
+            anchor.className = 'heading-anchor';
+            anchor.href = '#' + id;
+            anchor.setAttribute('aria-label', 'Link to this section');
+            anchor.textContent = '#';
+            heading.insertBefore(anchor, heading.firstChild);
+        });
+
+        // IntersectionObserver fade-in for sections
+        var sections = document.querySelectorAll('section, .tldr-box, .war-story, .callout-hero, .glossary-section, .further-reading-section, .cta-section, .author-card');
+        sections.forEach(function(el) {
+            el.classList.add('fade-in-section');
+        });
+
+        if ('IntersectionObserver' in window) {
+            var observer = new IntersectionObserver(function(entries) {
+                entries.forEach(function(entry) {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('is-visible');
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+
+            sections.forEach(function(el) {
+                observer.observe(el);
+            });
+        } else {
+            // Fallback: show everything immediately
+            sections.forEach(function(el) {
+                el.classList.add('is-visible');
+            });
+        }
+    })();
+    </script>
 
 </body>
 </html>
