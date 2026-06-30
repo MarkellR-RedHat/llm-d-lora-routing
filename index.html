@@ -5,1794 +5,2000 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LoRA Adapter Routing | llm-d</title>
 <meta name="author" content="Markell Rawls">
-<meta name="description" content="How llm-d's Endpoint Picker routes requests with cache-aware LoRA adapter affinity">
 <link rel="icon" type="image/png" href="https://llm-d.ai/img/llm-d-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Red+Hat+Display:wght@700;900&family=Red+Hat+Text:wght@400;500&display=swap" rel="stylesheet">
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ═══════════════════════════════════════════════════════
+   RESET & BASE
+   ═══════════════════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;overflow:hidden;font-family:'Red Hat Text',sans-serif;color:#2d2a26;background:#faf8f5;}
+body::before{
+  content:'';position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;
+  background:linear-gradient(135deg,#faf8f5 0%,#fef3e2 25%,#faf8f5 50%,#eef2ff 75%,#faf8f5 100%);
+  background-size:400% 400%;animation:bgShift 20s ease infinite;
+}
+@keyframes bgShift{0%{background-position:0% 50%;}50%{background-position:100% 50%;}100%{background-position:0% 50%;}}
 
-:root {
-  --bg: #faf8f5;
-  --card: #ffffff;
-  --text: #2d2a26;
-  --text-secondary: #6b6560;
-  --amber: #f59e0b;
-  --coral: #f5736c;
-  --blue: #3b82f6;
-  --green: #10b981;
-  --purple: #8b5cf6;
-  --cyan: #06b6d4;
-  --font-display: 'Red Hat Display', system-ui, sans-serif;
-  --font-body: 'Red Hat Text', system-ui, sans-serif;
-  --slide-transition: 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-}
+/* ═══════════════════════════════════════════════════════
+   PROGRESS BAR
+   ═══════════════════════════════════════════════════════ */
+.progress-bar{position:fixed;top:0;left:0;height:4px;z-index:1000;background:linear-gradient(90deg,#f59e0b,#f5736c,#3b82f6);transition:width .5s cubic-bezier(.4,0,.2,1);border-radius:0 2px 2px 0;}
 
-html, body {
-  overflow: hidden;
-  width: 100%;
-  height: 100%;
-  font-family: var(--font-body);
-  background: var(--bg);
-  color: var(--text);
-}
+/* ═══════════════════════════════════════════════════════
+   SLIDES VIEWPORT & TRACK
+   ═══════════════════════════════════════════════════════ */
+.slides-viewport{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;z-index:1;}
+.slides-track{display:flex;height:100%;transition:transform .6s cubic-bezier(.4,0,.2,1);}
+.slide{min-width:100vw;height:100vh;height:100dvh;position:relative;display:flex;align-items:center;justify-content:center;padding:80px 40px 100px;}
+.slide canvas{position:absolute;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;}
+.slide-content{position:relative;z-index:2;max-width:1100px;width:100%;opacity:0;transform:translateY(30px);transition:opacity .6s ease,transform .6s ease;}
+.slide.active .slide-content{opacity:1;transform:translateY(0);}
 
-/* ============ PROGRESS BAR ============ */
-.progress-bar {
-  position: fixed;
-  top: 0; left: 0;
-  height: 4px;
-  background: linear-gradient(90deg, var(--amber), var(--coral), var(--blue));
-  z-index: 1000;
-  transition: width 0.4s ease;
-  border-radius: 0 2px 2px 0;
-}
+/* ═══════════════════════════════════════════════════════
+   NAVIGATION
+   ═══════════════════════════════════════════════════════ */
+.nav-arrows{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;z-index:100;}
+.nav-arrows button{width:44px;height:44px;border-radius:50%;border:2px solid rgba(45,42,38,.15);background:rgba(255,255,255,.85);backdrop-filter:blur(8px);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .25s ease;color:#2d2a26;font-size:18px;}
+.nav-arrows button:hover{background:#fff;border-color:rgba(45,42,38,.3);transform:scale(1.08);}
+.nav-arrows button:disabled{opacity:.3;cursor:default;transform:none;}
+.nav-dots{display:flex;gap:8px;align-items:center;}
+.nav-dots .dot{width:10px;height:10px;border-radius:10px;background:rgba(45,42,38,.2);cursor:pointer;transition:all .35s ease;}
+.nav-dots .dot.active{background:#f59e0b;width:28px;transform:scale(1.2);}
 
-/* ============ BACKGROUND GRADIENT ============ */
-.bg-gradient {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(135deg, #faf8f5 0%, #fef3e2 25%, #faf8f5 50%, #e8f4f0 75%, #faf8f5 100%);
-  background-size: 400% 400%;
-  animation: gradientShift 20s ease infinite;
-  z-index: -1;
-}
-@keyframes gradientShift {
-  0%   { background-position: 0% 50%; }
-  25%  { background-position: 100% 50%; }
-  50%  { background-position: 100% 0%; }
-  75%  { background-position: 0% 100%; }
-  100% { background-position: 0% 50%; }
-}
+/* Slide counter */
+.slide-counter{position:fixed;top:18px;right:28px;z-index:100;font-family:'Red Hat Text',sans-serif;font-size:13px;color:#6b6560;font-weight:500;background:rgba(255,255,255,.7);backdrop-filter:blur(8px);padding:6px 14px;border-radius:20px;}
 
-/* ============ SLIDE VIEWPORT ============ */
-.slides-viewport {
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-  position: relative;
-}
-.slides-track {
-  display: flex;
-  height: 100%;
-  transition: transform var(--slide-transition);
-  will-change: transform;
-}
-.slide {
-  min-width: 100%;
-  width: 100%;
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 60px 80px 80px;
-  position: relative;
-  overflow: hidden;
-}
-.slide-inner {
-  max-width: 1200px;
-  width: 100%;
-  position: relative;
-  z-index: 2;
-}
+/* ═══════════════════════════════════════════════════════
+   TYPOGRAPHY
+   ═══════════════════════════════════════════════════════ */
+h1{font-family:'Red Hat Display',sans-serif;font-weight:900;line-height:1.1;}
+h2{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:2.2rem;margin-bottom:8px;line-height:1.15;}
+.subtitle{color:#6b6560;font-size:1.05rem;line-height:1.6;max-width:720px;margin-bottom:28px;}
 
-/* ============ NAVIGATION ============ */
-.nav-arrows {
-  position: fixed;
-  bottom: 32px;
-  right: 40px;
-  display: flex;
-  gap: 10px;
-  z-index: 100;
-}
-.nav-btn {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: 2px solid rgba(45,42,38,0.15);
-  background: var(--card);
-  color: var(--text);
-  font-size: 20px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s ease;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  font-family: var(--font-display);
-}
-.nav-btn:hover {
-  background: var(--text);
-  color: var(--card);
-  border-color: var(--text);
-  transform: scale(1.1);
-}
-.nav-btn:active { transform: scale(0.95); }
-.nav-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-  transform: none;
-}
+/* ═══════════════════════════════════════════════════════
+   CARDS
+   ═══════════════════════════════════════════════════════ */
+.card{background:#ffffff;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);transition:transform .25s ease,box-shadow .25s ease;}
+.card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
 
-/* Dots */
-.nav-dots {
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  z-index: 100;
-}
-.nav-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 2px solid rgba(45,42,38,0.2);
-  background: transparent;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-.nav-dot.active {
-  background: var(--amber);
-  border-color: var(--amber);
-  transform: scale(1.3);
-}
-.nav-dot:hover:not(.active) {
-  border-color: var(--text);
-  background: rgba(45,42,38,0.1);
-}
+/* ═══════════════════════════════════════════════════════
+   STAGGER ANIMATIONS
+   ═══════════════════════════════════════════════════════ */
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:translateY(0);}}
+.slide.active .stagger-1{animation:fadeSlideUp .5s .1s ease both;}
+.slide.active .stagger-2{animation:fadeSlideUp .5s .2s ease both;}
+.slide.active .stagger-3{animation:fadeSlideUp .5s .3s ease both;}
+.slide.active .stagger-4{animation:fadeSlideUp .5s .4s ease both;}
+.slide.active .stagger-5{animation:fadeSlideUp .5s .5s ease both;}
+.slide.active .stagger-6{animation:fadeSlideUp .5s .6s ease both;}
 
-/* ============ TYPOGRAPHY ============ */
-.slide-label {
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.82rem;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--amber);
-  margin-bottom: 12px;
-  opacity: 0;
-  transform: translateY(20px);
-}
-.slide-title {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: clamp(2rem, 4vw, 3.2rem);
-  line-height: 1.1;
-  color: var(--text);
-  margin-bottom: 20px;
-  opacity: 0;
-  transform: translateY(30px);
-}
-.slide-title .accent { color: var(--blue); }
-.slide-title .accent-amber { color: var(--amber); }
-.slide-title .accent-green { color: var(--green); }
-.slide-title .accent-coral { color: var(--coral); }
-.slide-subtitle {
-  font-family: var(--font-body);
-  font-weight: 400;
-  font-size: clamp(1rem, 1.6vw, 1.2rem);
-  color: var(--text-secondary);
-  line-height: 1.7;
-  max-width: 700px;
-  margin-bottom: 32px;
-  opacity: 0;
-  transform: translateY(20px);
-}
+/* ═══════════════════════════════════════════════════════
+   HERO / SLIDE 1
+   ═══════════════════════════════════════════════════════ */
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:50px;padding:8px 18px 8px 10px;font-size:.85rem;font-weight:500;color:#b45309;margin-bottom:24px;}
+.hero-badge img{width:24px;height:24px;border-radius:6px;}
+.hero-title{font-size:3.6rem;margin-bottom:16px;background:linear-gradient(135deg,#f59e0b 0%,#f5736c 40%,#7c3aed 70%,#3b82f6 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-subtitle{font-size:1.15rem;color:#6b6560;max-width:640px;line-height:1.7;margin-bottom:36px;}
+.hero-stats{display:flex;gap:24px;flex-wrap:wrap;}
+.hero-stat{background:#ffffff;border-radius:14px;padding:20px 28px;box-shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);transition:transform .25s ease,box-shadow .25s ease;min-width:160px;}
+.hero-stat:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
+.hero-stat .num{font-family:'Red Hat Display',sans-serif;font-weight:900;font-size:2rem;}
+.hero-stat .label{color:#6b6560;font-size:.85rem;margin-top:2px;font-weight:500;}
+.stat-amber .num{color:#f59e0b;}
+.stat-blue .num{color:#3b82f6;}
+.stat-green .num{color:#10b981;}
 
-/* ============ CARDS ============ */
-.card {
-  background: var(--card);
-  border-radius: 20px;
-  padding: 32px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.05), 0 1px 4px rgba(0,0,0,0.04);
-  border: 1px solid rgba(0,0,0,0.04);
-  opacity: 0;
-  transform: translateY(40px);
-}
-.card-grid {
-  display: grid;
-  gap: 20px;
-}
-.card-grid-2 { grid-template-columns: 1fr 1fr; }
-.card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-.card-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-.card-label {
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-}
-.card-value {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 2.2rem;
-  line-height: 1;
-}
-.card-detail {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 6px;
-  line-height: 1.5;
-}
+/* ═══════════════════════════════════════════════════════
+   PROBLEM / SLIDE 2
+   ═══════════════════════════════════════════════════════ */
+.problem-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;}
+.problem-point{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;background:#fff;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,.05);border-left:3px solid #f5736c;transition:transform .25s ease,box-shadow .25s ease;}
+.problem-point:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
+.problem-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
 
-/* ============ BADGE ============ */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.78rem;
-  padding: 6px 14px;
-  border-radius: 100px;
-  background: rgba(245,158,11,0.1);
-  color: var(--amber);
-  border: 1px solid rgba(245,158,11,0.2);
-}
-.badge-blue {
-  background: rgba(59,130,246,0.08);
-  color: var(--blue);
-  border-color: rgba(59,130,246,0.15);
-}
+/* ═══════════════════════════════════════════════════════
+   LORA / SLIDE 3
+   ═══════════════════════════════════════════════════════ */
+.lora-layout{display:grid;grid-template-columns:1fr 1fr;gap:32px;align-items:start;}
+.lora-canvas-wrap{position:relative;height:320px;border-radius:16px;overflow:hidden;background:rgba(124,58,237,.04);border:1px solid rgba(124,58,237,.1);}
+.lora-canvas-wrap canvas{width:100%;height:100%;}
+.lora-formula{background:#fff;border-radius:12px;padding:16px 20px;margin-top:12px;text-align:center;font-family:'Red Hat Display',sans-serif;font-size:1.1rem;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+.lora-formula span{color:#7c3aed;font-weight:700;}
 
-/* ============ SCORING TABLE ============ */
-.score-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 6px;
-  font-size: 0.88rem;
-}
-.score-table th {
-  text-align: left;
-  font-weight: 500;
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-secondary);
-  padding: 6px 12px;
-}
-.score-table td {
-  padding: 10px 12px;
-  background: rgba(0,0,0,0.02);
-  font-family: var(--font-body);
-}
-.score-table tr td:first-child { border-radius: 10px 0 0 10px; }
-.score-table tr td:last-child  { border-radius: 0 10px 10px 0; }
-.score-table tr.winner td {
-  background: rgba(16,185,129,0.08);
-  font-weight: 500;
-}
-.score-bar-cell { width: 100px; }
-.score-bar-bg {
-  width: 100%;
-  height: 8px;
-  background: rgba(0,0,0,0.05);
-  border-radius: 4px;
-  overflow: hidden;
-}
-.score-bar-fill {
-  height: 100%;
-  border-radius: 4px;
-  background: var(--blue);
-  width: 0;
-  transition: width 1s ease;
-}
-.score-bar-fill.best { background: var(--green); }
+/* ═══════════════════════════════════════════════════════
+   ROUTING / SLIDE 4
+   ═══════════════════════════════════════════════════════ */
+.routing-layout{display:grid;grid-template-columns:1.3fr 1fr;gap:28px;align-items:start;}
+.routing-canvas-wrap{position:relative;height:340px;border-radius:16px;overflow:hidden;background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.1);}
+.routing-canvas-wrap canvas{width:100%;height:100%;}
+.scoring-formula{background:#fff;border-radius:12px;padding:14px 18px;margin-bottom:16px;font-family:'Red Hat Text',sans-serif;font-size:.95rem;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid rgba(245,158,11,.12);}
+.scoring-formula code{color:#f59e0b;font-weight:700;font-family:'Red Hat Display',sans-serif;}
+.detail-cards{display:flex;flex-direction:column;gap:12px;}
+.detail-card{background:#fff;border-radius:12px;padding:16px 18px;box-shadow:0 1px 3px rgba(0,0,0,.05);transition:transform .25s ease,box-shadow .25s ease;}
+.detail-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
+.detail-card h4{font-family:'Red Hat Display',sans-serif;font-size:.95rem;margin-bottom:4px;}
+.detail-card p{color:#6b6560;font-size:.85rem;line-height:1.5;}
 
-/* ============ ADAPTER PILLS ============ */
-.adapter-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.82rem;
-  padding: 6px 14px;
-  border-radius: 100px;
-  border: 1.5px solid;
-  margin: 3px;
-}
+/* ═══════════════════════════════════════════════════════
+   PERFORMANCE / SLIDE 5
+   ═══════════════════════════════════════════════════════ */
+.perf-layout{display:flex;flex-direction:column;gap:20px;}
+.perf-canvas-wrap{position:relative;height:260px;border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);border:1px solid rgba(0,0,0,.06);}
+.perf-canvas-wrap canvas{width:100%;height:100%;}
+.perf-stats{display:flex;gap:16px;justify-content:center;flex-wrap:wrap;}
+.perf-stat{background:#fff;border-radius:12px;padding:16px 24px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center;transition:transform .25s ease,box-shadow .25s ease;}
+.perf-stat:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
+.perf-stat .val{font-family:'Red Hat Display',sans-serif;font-weight:900;font-size:1.6rem;color:#10b981;}
+.perf-stat .lbl{color:#6b6560;font-size:.8rem;font-weight:500;margin-top:2px;}
 
-/* ============ STAT RIBBON ============ */
-.stat-ribbon {
-  display: flex;
-  gap: 40px;
-  margin-top: 24px;
-  opacity: 0;
-  transform: translateY(20px);
-}
-.stat-item {
-  text-align: center;
-}
-.stat-number {
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: 2.5rem;
-  line-height: 1;
-}
-.stat-label {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
+/* ═══════════════════════════════════════════════════════
+   ARCHITECTURE / SLIDE 6
+   ═══════════════════════════════════════════════════════ */
+.arch-canvas-wrap{position:relative;height:380px;border-radius:16px;overflow:hidden;background:rgba(59,130,246,.03);border:1px solid rgba(59,130,246,.1);margin-bottom:16px;}
+.arch-canvas-wrap canvas{width:100%;height:100%;}
+.arch-legend{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:.82rem;color:#6b6560;}
+.legend-dot{width:12px;height:12px;border-radius:4px;}
 
-/* ============ TWO COLUMN LAYOUT ============ */
-.two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 40px;
-  align-items: start;
-}
-.two-col-wide-right {
-  grid-template-columns: 2fr 3fr;
-}
+/* ═══════════════════════════════════════════════════════
+   DEPLOY / SLIDE 7
+   ═══════════════════════════════════════════════════════ */
+.deploy-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.deploy-card{background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06);transition:transform .25s ease,box-shadow .25s ease;}
+.deploy-card:hover{transform:translateY(-3px);box-shadow:0 4px 8px rgba(0,0,0,.08),0 12px 32px rgba(0,0,0,.06);}
+.deploy-card-header{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(0,0,0,.06);}
+.step-badge{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:.8rem;color:#fff;}
+.deploy-card-header h4{font-family:'Red Hat Display',sans-serif;font-size:.9rem;font-weight:700;}
+.code-block{position:relative;background:#1e1e2e;color:#cdd6f4;padding:14px 16px;font-family:'Courier New',monospace;font-size:.78rem;line-height:1.6;overflow-x:auto;max-height:150px;}
+.copy-btn{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.1);border:none;color:#cdd6f4;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:.72rem;font-family:'Red Hat Text',sans-serif;transition:background .2s;}
+.copy-btn:hover{background:rgba(255,255,255,.2);}
+.deploy-links{display:flex;gap:14px;justify-content:center;margin-bottom:16px;}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:12px;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:.95rem;text-decoration:none;background:linear-gradient(135deg,#f59e0b,#f5736c);color:#fff;transition:transform .2s,box-shadow .2s;box-shadow:0 2px 8px rgba(245,158,11,.3);}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(245,158,11,.4);}
+.btn-secondary{display:inline-flex;align-items:center;gap:8px;padding:12px 28px;border-radius:12px;font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:.95rem;text-decoration:none;background:transparent;color:#3b82f6;border:2px solid #3b82f6;transition:transform .2s,background .2s;}
+.btn-secondary:hover{transform:translateY(-2px);background:rgba(59,130,246,.06);}
+.deploy-footer{text-align:center;padding-top:12px;border-top:1px solid rgba(0,0,0,.06);}
+.deploy-footer .author{font-family:'Red Hat Display',sans-serif;font-weight:700;font-size:.95rem;color:#2d2a26;margin-bottom:4px;}
+.deploy-footer .tagline{color:#6b6560;font-size:.8rem;line-height:1.5;max-width:520px;margin:0 auto;}
 
-/* ============ STEP LIST ============ */
-.step-list {
-  list-style: none;
-  counter-reset: steps;
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE
+   ═══════════════════════════════════════════════════════ */
+@media(max-width:900px){
+  .hero-title{font-size:2.6rem;}
+  h2{font-size:1.7rem;}
+  .hero-stats{flex-direction:column;gap:12px;}
+  .problem-grid{grid-template-columns:1fr;}
+  .lora-layout,.routing-layout{grid-template-columns:1fr;}
+  .deploy-grid{grid-template-columns:1fr;}
+  .slide{padding:80px 20px 90px;}
+  .lora-canvas-wrap{height:240px;}
+  .routing-canvas-wrap{height:260px;}
+  .arch-canvas-wrap{height:280px;}
 }
-.step-list li {
-  counter-increment: steps;
-  padding: 16px 20px 16px 56px;
-  position: relative;
-  margin-bottom: 10px;
-  background: var(--card);
-  border-radius: 14px;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-  border: 1px solid rgba(0,0,0,0.04);
-  font-size: 0.95rem;
-  line-height: 1.6;
-  opacity: 0;
-  transform: translateX(-30px);
-}
-.step-list li::before {
-  content: counter(steps);
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--blue);
-  color: #fff;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.82rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.step-list li strong { color: var(--text); }
-
-/* ============ COMPARISON PANELS ============ */
-.comparison {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-}
-.panel {
-  border-radius: 20px;
-  padding: 28px;
-  opacity: 0;
-  transform: translateY(30px);
-}
-.panel-bad {
-  background: rgba(245,115,108,0.06);
-  border: 1.5px solid rgba(245,115,108,0.15);
-}
-.panel-good {
-  background: rgba(16,185,129,0.06);
-  border: 1.5px solid rgba(16,185,129,0.15);
-}
-.panel-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.panel-bad .panel-title { color: var(--coral); }
-.panel-good .panel-title { color: var(--green); }
-
-/* ============ BAR CHART ============ */
-.bar-chart {
-  display: flex;
-  align-items: flex-end;
-  gap: 16px;
-  height: 200px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid rgba(0,0,0,0.06);
-}
-.bar-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  height: 100%;
-  justify-content: flex-end;
-}
-.bar {
-  width: 100%;
-  max-width: 48px;
-  border-radius: 8px 8px 0 0;
-  min-height: 4px;
-  transition: height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
-  height: 0;
-}
-.bar-label {
-  font-size: 0.72rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  text-align: center;
-}
-.bar-value {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.85rem;
-}
-
-/* ============ SWAP PHASE BAR ============ */
-.swap-bar-container {
-  height: 36px;
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  margin: 12px 0;
-}
-.swap-phase {
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.68rem;
-  color: #fff;
-  overflow: hidden;
-  white-space: nowrap;
-  width: 0;
-  transition: width 1s ease;
-}
-
-/* ============ CANVAS CONTAINER ============ */
-.canvas-container {
-  position: relative;
-  width: 100%;
-  height: 340px;
-  border-radius: 20px;
-  background: var(--card);
-  box-shadow: 0 4px 24px rgba(0,0,0,0.05);
-  border: 1px solid rgba(0,0,0,0.04);
-  overflow: hidden;
-  opacity: 0;
-  transform: scale(0.95);
-}
-.canvas-container canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-/* ============ CALLOUT ============ */
-.callout {
-  padding: 24px 28px;
-  border-radius: 16px;
-  border-left: 4px solid;
-  opacity: 0;
-  transform: translateY(20px);
-}
-.callout-amber {
-  background: rgba(245,158,11,0.06);
-  border-color: var(--amber);
-}
-.callout-blue {
-  background: rgba(59,130,246,0.06);
-  border-color: var(--blue);
-}
-.callout-title {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: 0.95rem;
-  margin-bottom: 8px;
-}
-.callout-amber .callout-title { color: var(--amber); }
-.callout-blue .callout-title  { color: var(--blue); }
-.callout-body {
-  font-size: 0.95rem;
-  line-height: 1.7;
-  color: var(--text-secondary);
-}
-.callout-body strong { color: var(--text); }
-
-/* ============ SCORING FORMULA ============ */
-.formula {
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 1rem;
-  background: var(--card);
-  padding: 16px 24px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.06);
-  color: var(--text-secondary);
-  letter-spacing: 0.01em;
-  opacity: 0;
-  transform: translateY(20px);
-}
-.formula .fn { color: var(--blue); font-weight: 500; }
-.formula .wt { color: var(--amber); font-weight: 500; }
-
-/* ============ FOOTER ============ */
-.slide-footer {
-  position: absolute;
-  bottom: 20px;
-  left: 80px;
-  right: 80px;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
-  opacity: 0.6;
-}
-.slide-footer a {
-  color: var(--blue);
-  text-decoration: none;
-}
-
-/* ============ ANIMATIONS ============ */
-.slide.active .slide-label,
-.slide.active .slide-title,
-.slide.active .slide-subtitle,
-.slide.active .stat-ribbon,
-.slide.active .card,
-.slide.active .panel,
-.slide.active .callout,
-.slide.active .formula,
-.slide.active .canvas-container {
-  animation: slideUp 0.7s ease forwards;
-}
-.slide.active .slide-label   { animation-delay: 0.05s; }
-.slide.active .slide-title   { animation-delay: 0.15s; }
-.slide.active .slide-subtitle { animation-delay: 0.25s; }
-.slide.active .stat-ribbon   { animation-delay: 0.35s; }
-.slide.active .formula       { animation-delay: 0.4s; }
-.slide.active .callout       { animation-delay: 0.5s; }
-.slide.active .canvas-container { animation-delay: 0.3s; }
-
-/* Staggered cards */
-.slide.active .card:nth-child(1) { animation-delay: 0.3s; }
-.slide.active .card:nth-child(2) { animation-delay: 0.4s; }
-.slide.active .card:nth-child(3) { animation-delay: 0.5s; }
-.slide.active .card:nth-child(4) { animation-delay: 0.6s; }
-.slide.active .card:nth-child(5) { animation-delay: 0.7s; }
-
-/* Staggered panels */
-.slide.active .panel:nth-child(1) { animation-delay: 0.35s; }
-.slide.active .panel:nth-child(2) { animation-delay: 0.5s; }
-
-/* Staggered steps */
-.slide.active .step-list li:nth-child(1) { animation: slideRight 0.6s ease forwards; animation-delay: 0.3s; }
-.slide.active .step-list li:nth-child(2) { animation: slideRight 0.6s ease forwards; animation-delay: 0.4s; }
-.slide.active .step-list li:nth-child(3) { animation: slideRight 0.6s ease forwards; animation-delay: 0.5s; }
-.slide.active .step-list li:nth-child(4) { animation: slideRight 0.6s ease forwards; animation-delay: 0.6s; }
-.slide.active .step-list li:nth-child(5) { animation: slideRight 0.6s ease forwards; animation-delay: 0.7s; }
-
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(40px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes slideRight {
-  from { opacity: 0; transform: translateX(-30px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.9); }
-  to   { opacity: 1; transform: scale(1); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes pulseGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0.3); }
-  50%      { box-shadow: 0 0 0 12px rgba(16,185,129,0); }
-}
-
-/* ============ HERO DECORATIVE SHAPES ============ */
-.hero-shape {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.08;
-  z-index: 0;
-}
-.hero-shape-1 {
-  width: 500px; height: 500px;
-  background: var(--amber);
-  top: -180px; right: -100px;
-  animation: float1 12s ease-in-out infinite;
-}
-.hero-shape-2 {
-  width: 300px; height: 300px;
-  background: var(--blue);
-  bottom: -60px; left: -80px;
-  animation: float2 15s ease-in-out infinite;
-}
-.hero-shape-3 {
-  width: 200px; height: 200px;
-  background: var(--green);
-  top: 40%; right: 10%;
-  animation: float3 10s ease-in-out infinite;
-}
-@keyframes float1 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50%      { transform: translate(-20px, 30px) rotate(10deg); }
-}
-@keyframes float2 {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  50%      { transform: translate(30px, -20px) rotate(-8deg); }
-}
-@keyframes float3 {
-  0%, 100% { transform: translate(0, 0); }
-  50%      { transform: translate(-15px, 20px); }
-}
-
-/* ============ WEIGHT DIAGRAM ============ */
-.weight-ring {
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  border: 3px solid rgba(0,0,0,0.06);
-  position: relative;
-  margin: 20px auto;
-}
-.weight-seg {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform-origin: 0 0;
-  font-size: 0.72rem;
-  font-weight: 500;
-}
-
-/* ============ RESPONSIVE ============ */
-@media (max-width: 900px) {
-  .slide { padding: 40px 32px 60px; }
-  .card-grid-2, .card-grid-3, .card-grid-4 { grid-template-columns: 1fr 1fr; }
-  .two-col, .two-col-wide-right, .comparison { grid-template-columns: 1fr; }
-  .bar-chart { height: 140px; }
-  .nav-arrows { right: 16px; bottom: 16px; }
-  .slide-footer { left: 32px; right: 32px; }
-  .stat-ribbon { gap: 20px; flex-wrap: wrap; }
-  .canvas-container { height: 260px; }
-}
-@media (max-width: 600px) {
-  .slide { padding: 30px 20px 50px; }
-  .card-grid-2, .card-grid-3, .card-grid-4 { grid-template-columns: 1fr; }
-  .nav-arrows { right: 12px; bottom: 12px; }
-  .nav-btn { width: 40px; height: 40px; font-size: 16px; }
-  .slide-footer { display: none; }
+@media(max-width:600px){
+  .hero-title{font-size:2rem;}
+  h2{font-size:1.4rem;}
+  .slide{padding:80px 16px 90px;}
 }
 </style>
 </head>
 <body>
 
-<div class="bg-gradient"></div>
-<div class="progress-bar" id="progressBar" style="width: 0%"></div>
+<!-- Progress bar -->
+<div class="progress-bar" id="progressBar"></div>
+<div class="slide-counter" id="slideCounter">Slide 1 of 7</div>
 
-<!-- ============================================================ -->
-<!-- SLIDES VIEWPORT -->
-<!-- ============================================================ -->
+<!-- Slides -->
 <div class="slides-viewport">
-<div class="slides-track" id="slidesTrack">
+  <div class="slides-track" id="slidesTrack">
 
-<!-- ========== SLIDE 1: TITLE ========== -->
-<div class="slide active" data-slide="0">
-  <div class="hero-shape hero-shape-1"></div>
-  <div class="hero-shape hero-shape-2"></div>
-  <div class="hero-shape hero-shape-3"></div>
-  <div class="slide-inner">
-    <div class="slide-label">CNCF Sandbox Project</div>
-    <div class="slide-title"><span class="accent">LoRA Adapter</span> Routing<br>with llm-d</div>
-    <div class="slide-subtitle">How the Endpoint Picker (EPP) uses cache-aware, load-balanced scoring to route requests to the right pod -- eliminating unnecessary adapter swaps and slashing tail latency.</div>
-    <div class="stat-ribbon">
-      <div class="stat-item">
-        <div class="stat-number" style="color:var(--amber)" id="heroStat">3.2x</div>
-        <div class="stat-label">fewer adapter swaps</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number" style="color:var(--green)">~70%</div>
-        <div class="stat-label">lower P95 latency</div>
-      </div>
-      <div class="stat-item">
-        <div class="stat-number" style="color:var(--blue)">0</div>
-        <div class="stat-label">extra GPU instances</div>
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 1: Title
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide active" id="slide-0">
+      <canvas id="heroCanvas"></canvas>
+      <div class="slide-content" style="text-align:left;">
+        <div class="hero-badge stagger-1">
+          <img src="https://llm-d.ai/img/llm-d-icon.png" alt="llm-d">
+          llm-d Open Source Framework
+        </div>
+        <h1 class="hero-title stagger-2">One Base Model,<br>Many Talents</h1>
+        <p class="hero-subtitle stagger-3">LoRA adapter routing in llm-d lets multiple fine-tuned models share a single GPU deployment -- slashing costs and eliminating resource fragmentation.</p>
+        <div class="hero-stats stagger-4">
+          <div class="hero-stat stat-amber">
+            <div class="num">3.2x</div>
+            <div class="label">Fewer Adapter Swaps</div>
+          </div>
+          <div class="hero-stat stat-blue">
+            <div class="num">78%</div>
+            <div class="label">Cache Hit Rate (EPP)</div>
+          </div>
+          <div class="hero-stat stat-green">
+            <div class="num">60%</div>
+            <div class="label">GPU Cost Reduction</div>
+          </div>
+        </div>
       </div>
     </div>
-    <div style="margin-top:32px; display:flex; gap:12px; opacity:0; transform:translateY(20px)" class="slide-subtitle" id="heroBadges">
-      <span class="badge">llm-d v0.5</span>
-      <span class="badge badge-blue">Kubernetes-native</span>
-    </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
 
-<!-- ========== SLIDE 2: THE PROBLEM ========== -->
-<div class="slide" data-slide="1">
-  <div class="slide-inner">
-    <div class="slide-label">The Problem</div>
-    <div class="slide-title">Adapter swaps <span class="accent-coral">cost more</span> than the swap itself</div>
-    <div class="slide-subtitle">In multi-tenant LLM serving, different users need different LoRA adapters. Loading a new adapter takes 500-2000ms -- and it drains the entire batch pipeline, blocking every other request on that pod.</div>
-    <div class="comparison">
-      <div class="panel panel-bad">
-        <div class="panel-title"><span style="font-size:1.2rem">&#10060;</span> Round-Robin Routing</div>
-        <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.7; margin-bottom:16px">Picks the next pod in rotation regardless of which adapters are loaded. Completely ignores cache state, GPU load, and adapter affinity.</p>
-        <div class="card-grid" style="grid-template-columns:1fr 1fr; gap:10px">
-          <div style="text-align:center; padding:12px; background:rgba(245,115,108,0.06); border-radius:12px">
-            <div style="font-family:var(--font-display); font-weight:900; font-size:1.6rem; color:var(--coral)">~65%</div>
-            <div style="font-size:0.78rem; color:var(--text-secondary)">swap rate</div>
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 2: The Problem
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-1">
+      <canvas id="problemCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1" style="color:#f5736c;">The Multi-Model Problem</h2>
+        <p class="subtitle stagger-2">Traditional deployments need one GPU per fine-tuned model. As teams multiply adapters for legal, medical, code review, and support -- costs spiral and GPUs sit idle.</p>
+        <div class="problem-grid">
+          <div class="problem-point stagger-3">
+            <div class="problem-icon" style="background:rgba(245,115,108,.1);color:#f5736c;">&#9888;</div>
+            <div><strong>Each model needs its own GPU</strong><br><span style="color:#6b6560;font-size:.88rem;">Dedicated hardware per fine-tune wastes resources</span></div>
           </div>
-          <div style="text-align:center; padding:12px; background:rgba(245,115,108,0.06); border-radius:12px">
-            <div style="font-family:var(--font-display); font-weight:900; font-size:1.6rem; color:var(--coral)">4s</div>
-            <div style="font-size:0.78rem; color:var(--text-secondary)">P95 latency spike</div>
+          <div class="problem-point stagger-4">
+            <div class="problem-icon" style="background:rgba(245,115,108,.1);color:#f5736c;">&#9632;</div>
+            <div><strong>GPU utilization averages 20-40%</strong><br><span style="color:#6b6560;font-size:.88rem;">Most cycles sit idle between inference bursts</span></div>
           </div>
-        </div>
-      </div>
-      <div class="panel panel-good">
-        <div class="panel-title"><span style="font-size:1.2rem">&#9989;</span> EPP Smart Routing</div>
-        <p style="font-size:0.92rem; color:var(--text-secondary); line-height:1.7; margin-bottom:16px">Scores every candidate pod using adapter affinity, KV cache warmth, queue depth, and GPU health -- then picks the optimal target.</p>
-        <div class="card-grid" style="grid-template-columns:1fr 1fr; gap:10px">
-          <div style="text-align:center; padding:12px; background:rgba(16,185,129,0.06); border-radius:12px">
-            <div style="font-family:var(--font-display); font-weight:900; font-size:1.6rem; color:var(--green)">~18%</div>
-            <div style="font-size:0.78rem; color:var(--text-secondary)">swap rate</div>
+          <div class="problem-point stagger-5">
+            <div class="problem-icon" style="background:rgba(245,115,108,.1);color:#f5736c;">&#8593;</div>
+            <div><strong>Cost scales linearly with adapter count</strong><br><span style="color:#6b6560;font-size:.88rem;">Adding adapters means adding GPUs</span></div>
           </div>
-          <div style="text-align:center; padding:12px; background:rgba(16,185,129,0.06); border-radius:12px">
-            <div style="font-family:var(--font-display); font-weight:900; font-size:1.6rem; color:var(--green)">200ms</div>
-            <div style="font-size:0.78rem; color:var(--text-secondary)">P95 latency</div>
+          <div class="problem-point stagger-6">
+            <div class="problem-icon" style="background:rgba(245,115,108,.1);color:#f5736c;">&#10005;</div>
+            <div><strong>No resource sharing between models</strong><br><span style="color:#6b6560;font-size:.88rem;">Each deployment is an isolated silo</span></div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
 
-<!-- ========== SLIDE 3: HOW EPP SCORES PODS ========== -->
-<div class="slide" data-slide="2">
-  <div class="slide-inner">
-    <div class="slide-label">The Scoring Engine</div>
-    <div class="slide-title">How the <span class="accent">EPP scores</span> every pod</div>
-    <div class="slide-subtitle">The Endpoint Picker computes a weighted composite score for each candidate pod, then routes to the winner.</div>
-    <div class="card-grid card-grid-4" style="margin-bottom:24px">
-      <div class="card" style="border-top: 3px solid var(--blue)">
-        <div class="card-label">Adapter Affinity</div>
-        <div class="card-value" style="color:var(--blue)">50%</div>
-        <div class="card-detail">Does this pod already have the requested adapter loaded? Avoids swap overhead entirely.</div>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--amber)">
-        <div class="card-label">KV Cache Match</div>
-        <div class="card-value" style="color:var(--amber)">20%</div>
-        <div class="card-detail">Does this pod have cached key-value pairs from prior requests? Reduces time-to-first-token.</div>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--green)">
-        <div class="card-label">Load / Queue Depth</div>
-        <div class="card-value" style="color:var(--green)">15%</div>
-        <div class="card-detail">How busy is this pod? Avoids overloading pods that are already saturated.</div>
-      </div>
-      <div class="card" style="border-top: 3px solid var(--purple)">
-        <div class="card-label">GPU Health</div>
-        <div class="card-value" style="color:var(--purple)">15%</div>
-        <div class="card-detail">Current resource availability. Healthier pods with more headroom are preferred.</div>
-      </div>
-    </div>
-    <div class="formula">
-      <span class="fn">composite</span> = <span class="fn">adapter_affinity</span>(<span class="wt">0.50</span>) + <span class="fn">cache_match</span>(<span class="wt">0.20</span>) + <span class="fn">1/load</span>(<span class="wt">0.15</span>) + <span class="fn">gpu_health</span>(<span class="wt">0.15</span>)
-    </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
-
-<!-- ========== SLIDE 4: LIVE SCORING WALKTHROUGH ========== -->
-<div class="slide" data-slide="3">
-  <div class="slide-inner">
-    <div class="slide-label">Scoring in Action</div>
-    <div class="slide-title">Routing a <span class="accent-green">legal-assistant-v2</span> request</div>
-    <div class="slide-subtitle">Watch the EPP score 6 pods in real time and pick the optimal target.</div>
-    <div class="two-col-wide-right" style="display:grid; grid-template-columns: 1fr 1.6fr; gap: 32px; align-items: start;">
-      <div>
-        <div class="card" style="margin-bottom:16px; border-left: 3px solid var(--green)">
-          <div class="card-label">Incoming Request</div>
-          <div style="margin-top:8px">
-            <div class="adapter-pill" style="border-color: var(--green); color: var(--green); background: rgba(16,185,129,0.06)">legal-assistant-v2</div>
-          </div>
-          <div class="card-detail" style="margin-top:12px">Adapter size: 25 MB<br>Domain: Legal</div>
-        </div>
-        <div class="callout callout-blue">
-          <div class="callout-title">Cache Hit</div>
-          <div class="callout-body">pod-02 already has the adapter loaded with warm KV cache. <strong>Zero swap penalty.</strong> Request starts inference immediately.</div>
-        </div>
-      </div>
-      <div class="card" id="scoringTableCard">
-        <div class="card-label" style="margin-bottom:12px">EPP Pod Scoring</div>
-        <table class="score-table" id="scoringTable">
-          <thead>
-            <tr><th>Pod</th><th>Adapter</th><th>KV$</th><th>Load</th><th>GPU</th><th>Score</th><th></th></tr>
-          </thead>
-          <tbody id="scoringBody">
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
-
-<!-- ========== SLIDE 5: ROUTING VISUALIZATION ========== -->
-<div class="slide" data-slide="4">
-  <div class="slide-inner">
-    <div class="slide-label">Visualization</div>
-    <div class="slide-title">Adapter routing <span class="accent">in motion</span></div>
-    <div class="slide-subtitle">Requests flow from ingress to pods. Green bursts = cache hits. Red bursts = adapter swaps. Click Play to start.</div>
-    <div class="comparison" style="gap:16px">
-      <div>
-        <div style="text-align:center; margin-bottom:8px; font-family:var(--font-display); font-weight:700; color:var(--coral); font-size:0.88rem">Round-Robin</div>
-        <div class="canvas-container" id="rrCanvasWrap">
-          <canvas id="rrCanvas"></canvas>
-        </div>
-        <div style="text-align:center; margin-top:8px; font-size:0.82rem; color:var(--text-secondary)">
-          Swaps: <strong id="rrSwapsDisp">0</strong> &nbsp; Latency: <strong id="rrLatDisp">0</strong>ms
-        </div>
-      </div>
-      <div>
-        <div style="text-align:center; margin-bottom:8px; font-family:var(--font-display); font-weight:700; color:var(--green); font-size:0.88rem">EPP Smart Routing</div>
-        <div class="canvas-container" id="smartCanvasWrap">
-          <canvas id="smartCanvas"></canvas>
-        </div>
-        <div style="text-align:center; margin-top:8px; font-size:0.82rem; color:var(--text-secondary)">
-          Swaps: <strong id="smartSwapsDisp">0</strong> &nbsp; Latency: <strong id="smartLatDisp">0</strong>ms
-        </div>
-      </div>
-    </div>
-    <div style="text-align:center; margin-top:16px; opacity:0; transform:translateY(20px)" class="slide-subtitle">
-      <button onclick="toggleSim()" id="simBtn" style="font-family:var(--font-display); font-weight:700; font-size:0.95rem; padding:10px 28px; border-radius:100px; border:2px solid var(--blue); background:var(--blue); color:#fff; cursor:pointer; transition:all 0.2s">&#9654; Play Simulation</button>
-      <button onclick="resetSim()" style="font-family:var(--font-display); font-weight:700; font-size:0.95rem; padding:10px 28px; border-radius:100px; border:2px solid rgba(0,0,0,0.12); background:var(--card); color:var(--text); cursor:pointer; transition:all 0.2s; margin-left:8px">&#8635; Reset</button>
-    </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
-
-<!-- ========== SLIDE 6: THE BLAST RADIUS ========== -->
-<div class="slide" data-slide="5">
-  <div class="slide-inner">
-    <div class="slide-label">Why It Matters</div>
-    <div class="slide-title">The <span class="accent-coral">blast radius</span> of a single swap</div>
-    <div class="slide-subtitle">An adapter swap doesn't just cost the swap itself. It drains the entire batch pipeline, blocking every other request on that pod for 200-500ms.</div>
-    <div class="two-col" style="align-items:start">
-      <div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">Swap Penalty Breakdown</div>
-          <div class="swap-bar-container" id="swapBarAnim">
-            <div class="swap-phase" style="background:#dc2626" data-pct="25">Batch Drain</div>
-            <div class="swap-phase" style="background:#ea580c" data-pct="15">Wt Dealloc</div>
-            <div class="swap-phase" style="background:#d97706" data-pct="30">Wt Transfer</div>
-            <div class="swap-phase" style="background:#65a30d" data-pct="15">Init</div>
-            <div class="swap-phase" style="background:#0891b2" data-pct="15">Warmup</div>
-          </div>
-          <div style="font-size:0.82rem; color:var(--text-secondary); line-height:1.7">
-            Total penalty: <strong style="color:var(--amber)">800-2000ms</strong> per swap.<br>
-            During "Batch Drain" -- <strong>every request on this pod waits.</strong>
-          </div>
-        </div>
-        <div class="callout callout-amber">
-          <div class="callout-title">War Story: The 3 AM Swap Storm</div>
-          <div class="callout-body">A batch job kicks off 200 requests for a rare adapter. Round-robin spreads them across all 8 pods. <strong>Every pod starts swapping simultaneously.</strong> The steady-state traffic for popular adapters has nowhere to go. <strong>P95 goes from 200ms to 4 seconds.</strong> EPP routes all 200 to 2 pods that already have it cached, while the other 6 keep serving undisturbed.</div>
-        </div>
-      </div>
-      <div>
-        <div class="card">
-          <div class="card-label">Latency Comparison</div>
-          <div class="bar-chart" id="latencyBars">
-            <div class="bar-group">
-              <div class="bar-value" style="color:var(--coral)">800ms</div>
-              <div class="bar" style="background:var(--coral)" data-height="80" id="bar1"></div>
-              <div class="bar-label">RR<br>P50</div>
-            </div>
-            <div class="bar-group">
-              <div class="bar-value" style="color:var(--green)">140ms</div>
-              <div class="bar" style="background:var(--green)" data-height="14" id="bar2"></div>
-              <div class="bar-label">EPP<br>P50</div>
-            </div>
-            <div class="bar-group">
-              <div class="bar-value" style="color:var(--coral)">2400ms</div>
-              <div class="bar" style="background:var(--coral)" data-height="100" id="bar3"></div>
-              <div class="bar-label">RR<br>P95</div>
-            </div>
-            <div class="bar-group">
-              <div class="bar-value" style="color:var(--green)">210ms</div>
-              <div class="bar" style="background:var(--green)" data-height="21" id="bar4"></div>
-              <div class="bar-label">EPP<br>P95</div>
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 3: What is LoRA
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-2">
+      <canvas id="loraBgCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1" style="color:#7c3aed;">LoRA: Tiny Adapters, Massive Savings</h2>
+        <p class="subtitle stagger-2">Low-Rank Adaptation keeps the base model frozen and trains only tiny adapter matrices -- typically 2-5% of model size. Multiple adapters share one base model on a single GPU.</p>
+        <div class="lora-layout">
+          <div class="stagger-3">
+            <div class="lora-canvas-wrap"><canvas id="loraCanvas"></canvas></div>
+            <div class="lora-formula">
+              <span>W</span> = <span>A</span> &times; <span>B</span> &nbsp;&nbsp; where A is <span>d &times; r</span>, B is <span>r &times; d</span>, &nbsp;<span>r &laquo; d</span>
             </div>
           </div>
-          <div style="text-align:center; margin-top:12px; font-size:0.85rem; color:var(--text-secondary)">Multi-tenant SaaS scenario with 5 adapters, 6 pods</div>
+          <div class="stagger-4" style="display:flex;flex-direction:column;gap:12px;">
+            <div class="card" style="border-left:3px solid #7c3aed;">
+              <strong style="color:#7c3aed;">Base Model Frozen</strong>
+              <p style="color:#6b6560;font-size:.88rem;margin-top:4px;">The foundation weights stay unchanged. Only adapter matrices are trained and swapped.</p>
+            </div>
+            <div class="card" style="border-left:3px solid #3b82f6;">
+              <strong style="color:#3b82f6;">2-5% Model Size</strong>
+              <p style="color:#6b6560;font-size:.88rem;margin-top:4px;">Each adapter adds minimal parameters. Store dozens of adapters alongside one base model.</p>
+            </div>
+            <div class="card" style="border-left:3px solid #10b981;">
+              <strong style="color:#10b981;">Hot-Swappable</strong>
+              <p style="color:#6b6560;font-size:.88rem;margin-top:4px;">Adapters load and unload in milliseconds. No model reload, no cold start.</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
 
-<!-- ========== SLIDE 7: COST IMPACT ========== -->
-<div class="slide" data-slide="6">
-  <div class="slide-inner">
-    <div class="slide-label">Cost Impact</div>
-    <div class="slide-title">LoRA routing saves <span class="accent-green">real money</span></div>
-    <div class="slide-subtitle">Shared base model + hot-swapped adapters vs. dedicated GPU instances per fine-tune.</div>
-    <div class="two-col" style="align-items:start">
-      <div>
-        <div class="card-grid" style="grid-template-columns:1fr; gap:14px">
-          <div class="card" style="border-left: 3px solid var(--coral)">
-            <div class="card-label">Separate Deployments</div>
-            <div class="card-value" style="color:var(--coral)" id="costSeparate">$25.9K</div>
-            <div class="card-detail" id="costSeparateDetail">12 GPU instances at $2.50/hr -- one per adapter, no sharing</div>
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 4: Smart Routing
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-3">
+      <canvas id="routingBgCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1" style="color:#f59e0b;">Smart Routing with EPP</h2>
+        <p class="subtitle stagger-2">The Endpoint Picker scores every pod for each incoming request -- balancing adapter affinity, KV cache warmth, queue depth, and GPU headroom to find the optimal target.</p>
+        <div class="routing-layout">
+          <div class="stagger-3">
+            <div class="routing-canvas-wrap"><canvas id="routingCanvas"></canvas></div>
           </div>
-          <div class="card" style="border-left: 3px solid var(--green)">
-            <div class="card-label">Shared Base + LoRA Routing</div>
-            <div class="card-value" style="color:var(--green)" id="costShared">$5.4K</div>
-            <div class="card-detail" id="costSharedDetail">3 GPU instances, shared base model, hot-swap adapters on demand</div>
-          </div>
-          <div class="card" style="background:rgba(16,185,129,0.04); border: 1.5px solid rgba(16,185,129,0.15); text-align:center">
-            <div class="card-label">Monthly Savings</div>
-            <div class="card-value" style="color:var(--green); font-size:3rem" id="costSavingsPct">79%</div>
-            <div class="card-detail" id="costSavingsAmt">$20.5K/month saved</div>
-          </div>
-        </div>
-      </div>
-      <div>
-        <div class="card">
-          <div class="card-label">Swap Cost Savings (per day)</div>
-          <div style="margin-top:12px">
-            <div style="display:flex; justify-content:space-between; margin-bottom:8px">
-              <span style="font-size:0.85rem; color:var(--text-secondary)">50,000 requests/day</span>
-              <span style="font-size:0.85rem; color:var(--text-secondary)">800ms avg swap penalty</span>
+          <div class="stagger-4">
+            <div class="scoring-formula">
+              <code>Score = affinity(0.50) + cache(0.20) + load(0.15) + gpu(0.15)</code>
             </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:16px">
-              <div style="text-align:center; padding:14px; background:rgba(245,115,108,0.06); border-radius:12px">
-                <div style="font-size:0.72rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px">RR GPU-hours wasted</div>
-                <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--coral)">7.2</div>
+            <div class="detail-cards">
+              <div class="detail-card" style="border-left:3px solid #f59e0b;">
+                <h4 style="color:#f59e0b;">Adapter Affinity Routing</h4>
+                <p>Routes requests to pods that already have the needed adapter loaded -- avoiding costly swap operations.</p>
               </div>
-              <div style="text-align:center; padding:14px; background:rgba(16,185,129,0.06); border-radius:12px">
-                <div style="font-size:0.72rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px">EPP GPU-hours wasted</div>
-                <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--green)">2.0</div>
+              <div class="detail-card" style="border-left:3px solid #3b82f6;">
+                <h4 style="color:#3b82f6;">KV Cache Matching</h4>
+                <p>Prefers pods with warm KV cache for the adapter, enabling faster time-to-first-token.</p>
+              </div>
+              <div class="detail-card" style="border-left:3px solid #10b981;">
+                <h4 style="color:#10b981;">Load-Aware Balancing</h4>
+                <p>Considers queue depth and GPU utilization to avoid overloading any single pod.</p>
               </div>
             </div>
-            <div style="text-align:center; padding:16px; background:rgba(16,185,129,0.06); border-radius:14px; border: 1px solid rgba(16,185,129,0.15)">
-              <div style="font-size:0.78rem; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px">Daily savings</div>
-              <div style="font-family:var(--font-display); font-weight:900; font-size:2rem; color:var(--green)">5.2 GPU-hours</div>
-              <div style="font-family:var(--font-display); font-weight:700; font-size:1.1rem; color:var(--green); margin-top:4px">= $13.00/day saved</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 5: Performance
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-4">
+      <canvas id="perfBgCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1" style="color:#10b981;">The Numbers Tell the Story</h2>
+        <p class="subtitle stagger-2">Benchmarked with 5 LoRA adapters on Llama 3.1 70B. Smart EPP routing vs naive round-robin across swap rate, latency, and cache efficiency.</p>
+        <div class="perf-layout">
+          <div class="perf-canvas-wrap stagger-3"><canvas id="perfCanvas"></canvas></div>
+          <div class="perf-stats stagger-4">
+            <div class="perf-stat">
+              <div class="val">3.2x</div>
+              <div class="lbl">Fewer Swaps</div>
+            </div>
+            <div class="perf-stat">
+              <div class="val">58%</div>
+              <div class="lbl">Lower P50 Latency</div>
+            </div>
+            <div class="perf-stat">
+              <div class="val">78%</div>
+              <div class="lbl">Cache Hit Rate</div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
 
-<!-- ========== SLIDE 8: WHAT'S NEXT ========== -->
-<div class="slide" data-slide="7">
-  <div class="hero-shape hero-shape-1" style="opacity:0.05; animation-delay: -3s"></div>
-  <div class="hero-shape hero-shape-2" style="opacity:0.05; animation-delay: -5s"></div>
-  <div class="slide-inner">
-    <div class="slide-label">Getting Started</div>
-    <div class="slide-title">Start routing <span class="accent">smarter</span> today</div>
-    <div class="slide-subtitle">llm-d is a CNCF Sandbox project. It runs on Kubernetes and integrates with vLLM, HuggingFace, and any OpenAI-compatible API.</div>
-    <div class="two-col" style="align-items:start">
-      <div>
-        <ol class="step-list">
-          <li><strong>Deploy llm-d</strong> on your Kubernetes cluster with Helm or Kustomize</li>
-          <li><strong>Register your LoRA adapters</strong> -- point to HuggingFace or local storage</li>
-          <li><strong>Configure the EPP</strong> -- set adapter affinity weights, pod count, and GPU type</li>
-          <li><strong>Send requests</strong> -- the EPP handles routing automatically, scoring every pod per-request</li>
-          <li><strong>Monitor</strong> -- built-in Prometheus metrics for swap rate, cache hit rate, and P95 latency</li>
-        </ol>
-      </div>
-      <div>
-        <div class="card" style="margin-bottom:16px">
-          <div class="card-label">Multi-Tenant Config Example</div>
-          <div style="margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:10px">
-            <div style="text-align:center; padding:12px; background:rgba(59,130,246,0.05); border-radius:12px">
-              <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--blue)">8</div>
-              <div style="font-size:0.78rem; color:var(--text-secondary)">tenants</div>
-            </div>
-            <div style="text-align:center; padding:12px; background:rgba(59,130,246,0.05); border-radius:12px">
-              <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--blue)">16</div>
-              <div style="font-size:0.78rem; color:var(--text-secondary)">adapters</div>
-            </div>
-            <div style="text-align:center; padding:12px; background:rgba(16,185,129,0.05); border-radius:12px">
-              <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--green)">6</div>
-              <div style="font-size:0.78rem; color:var(--text-secondary)">pods (H100)</div>
-            </div>
-            <div style="text-align:center; padding:12px; background:rgba(245,158,11,0.05); border-radius:12px">
-              <div style="font-family:var(--font-display); font-weight:900; font-size:1.4rem; color:var(--amber)">70B</div>
-              <div style="font-size:0.78rem; color:var(--text-secondary)">base model</div>
-            </div>
-          </div>
-        </div>
-        <div class="card" style="text-align:center; background:linear-gradient(135deg, rgba(59,130,246,0.04), rgba(16,185,129,0.04))">
-          <div style="font-family:var(--font-display); font-weight:900; font-size:1.3rem; color:var(--text); margin-bottom:8px">llm-d is open source</div>
-          <div style="font-size:0.92rem; color:var(--text-secondary); line-height:1.6">
-            <a href="https://github.com/llm-d" target="_blank" style="color:var(--blue); text-decoration:none; font-weight:500">github.com/llm-d</a> -- Star the repo, try it out, and join the community.
-          </div>
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 6: Architecture
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-5">
+      <canvas id="archBgCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1" style="color:#3b82f6;">Full System Architecture</h2>
+        <p class="subtitle stagger-2">From API gateway through the EPP router, requests flow to pods running vLLM with hot-swappable LoRA adapters. The routing sidecar reports adapter state back to EPP.</p>
+        <div class="arch-canvas-wrap stagger-3"><canvas id="archCanvas"></canvas></div>
+        <div class="arch-legend stagger-4">
+          <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div>EPP Router</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#3b82f6;"></div>Pods with Adapters</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#7c3aed;"></div>Adapter Rings</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div>Token Output</div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="slide-footer">
-    <span>Markell Rawls</span>
-    <a href="https://github.com/llm-d" target="_blank">github.com/llm-d</a>
-  </div>
-</div>
 
-</div><!-- /slides-track -->
+    <!-- ═══════════════════════════════════════════════════
+         SLIDE 7: Deploy
+         ═══════════════════════════════════════════════════ -->
+    <div class="slide" id="slide-6">
+      <canvas id="deployCanvas"></canvas>
+      <div class="slide-content">
+        <h2 class="stagger-1">Deploy It Today</h2>
+        <p class="subtitle stagger-2">Enable LoRA routing in llm-d with a few lines of YAML. The EPP handles adapter-aware scoring automatically.</p>
+        <div class="deploy-grid stagger-3">
+          <div class="deploy-card">
+            <div class="deploy-card-header">
+              <div class="step-badge" style="background:#3b82f6;">1</div>
+              <h4>Base LoRA Deployment</h4>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>apiVersion: inference.llm-d.ai/v1alpha1
+kind: LLMInferenceService
+spec:
+  model: llama-3.1-70b
+  adapters:
+    maxSlots: 4</pre>
+            </div>
+          </div>
+          <div class="deploy-card">
+            <div class="deploy-card-header">
+              <div class="step-badge" style="background:#7c3aed;">2</div>
+              <h4>Enable EPP Routing</h4>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>spec:
+  routing:
+    strategy: lora-affinity
+    scoringWeights:
+      adapterAffinity: 0.50
+      kvCacheMatch: 0.20</pre>
+            </div>
+          </div>
+          <div class="deploy-card">
+            <div class="deploy-card-header">
+              <div class="step-badge" style="background:#10b981;">3</div>
+              <h4>Add Adapters</h4>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>spec:
+  adapters:
+    - name: legal-assistant-v2
+      source: huggingface/legal-lora
+    - name: code-reviewer-xl
+      source: huggingface/code-lora</pre>
+            </div>
+          </div>
+          <div class="deploy-card">
+            <div class="deploy-card-header">
+              <div class="step-badge" style="background:#f59e0b;">4</div>
+              <h4>Scale Out</h4>
+            </div>
+            <div class="code-block">
+              <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+<pre>spec:
+  replicas: 6
+  adapters:
+    maxSlots: 4
+    preloadStrategy: demand</pre>
+            </div>
+          </div>
+        </div>
+        <div class="deploy-links stagger-4">
+          <a href="https://github.com/llm-d/llm-d" target="_blank" class="btn-primary">View on GitHub &#8594;</a>
+          <a href="https://markellr-redhat.github.io/llm-d-content-hub/" target="_blank" class="btn-secondary">Content Hub &#8594;</a>
+        </div>
+        <div class="deploy-footer stagger-5">
+          <div class="author">Markell Rawls | AI Evangelist, Red Hat</div>
+          <div class="tagline">llm-d is open source, CNCF Sandbox. Built for platform teams running multi-tenant LLM inference.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /slides-track -->
 </div><!-- /slides-viewport -->
 
-<!-- NAVIGATION -->
-<div class="nav-dots" id="navDots"></div>
+<!-- Navigation -->
 <div class="nav-arrows">
-  <button class="nav-btn" id="prevBtn" onclick="goSlide(currentSlide-1)" disabled>&#8592;</button>
-  <button class="nav-btn" id="nextBtn" onclick="goSlide(currentSlide+1)">&#8594;</button>
+  <button id="prevBtn" disabled>&#8592;</button>
+  <div class="nav-dots" id="navDots"></div>
+  <button id="nextBtn">&#8594;</button>
 </div>
 
 <script>
-// ================================================================
-// SLIDE DECK ENGINE
-// ================================================================
-const TOTAL_SLIDES = 8;
-let currentSlide = 0;
-const track = document.getElementById('slidesTrack');
-const slides = document.querySelectorAll('.slide');
-const progressBar = document.getElementById('progressBar');
+/* ═══════════════════════════════════════════════════════
+   MAIN IIFE
+   ═══════════════════════════════════════════════════════ */
+(function() {
+  'use strict';
 
-// Build dots
-const dotsContainer = document.getElementById('navDots');
-for (let i = 0; i < TOTAL_SLIDES; i++) {
-  const dot = document.createElement('button');
-  dot.className = 'nav-dot' + (i === 0 ? ' active' : '');
-  dot.onclick = () => goSlide(i);
-  dot.setAttribute('aria-label', 'Go to slide ' + (i + 1));
-  dotsContainer.appendChild(dot);
-}
+  /* ───── Constants ───── */
+  var TOTAL = 7;
+  var currentSlide = 0;
+  var animFrames = {};
+  var isHidden = false;
 
-function goSlide(n) {
-  if (n < 0 || n >= TOTAL_SLIDES) return;
-  // Remove active from old
-  slides[currentSlide].classList.remove('active');
-  currentSlide = n;
-  // Move track
-  track.style.transform = 'translateX(-' + (currentSlide * 100) + '%)';
-  // Mark active
-  slides[currentSlide].classList.add('active');
-  // Update dots
-  document.querySelectorAll('.nav-dot').forEach((d, i) => {
-    d.classList.toggle('active', i === currentSlide);
-  });
-  // Update arrows
-  document.getElementById('prevBtn').disabled = currentSlide === 0;
-  document.getElementById('nextBtn').disabled = currentSlide === TOTAL_SLIDES - 1;
-  // Update progress bar
-  progressBar.style.width = ((currentSlide + 1) / TOTAL_SLIDES * 100) + '%';
-  // Trigger slide-specific animations
-  onSlideEnter(currentSlide);
-}
-
-// Keyboard navigation
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); goSlide(currentSlide + 1); }
-  if (e.key === 'ArrowLeft') { e.preventDefault(); goSlide(currentSlide - 1); }
-  if (e.key === 'Home') { e.preventDefault(); goSlide(0); }
-  if (e.key === 'End') { e.preventDefault(); goSlide(TOTAL_SLIDES - 1); }
-});
-
-// Touch/swipe support
-let touchStartX = 0;
-let touchStartY = 0;
-document.addEventListener('touchstart', (e) => {
-  touchStartX = e.touches[0].clientX;
-  touchStartY = e.touches[0].clientY;
-}, { passive: true });
-document.addEventListener('touchend', (e) => {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  const dy = e.changedTouches[0].clientY - touchStartY;
-  if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) {
-    if (dx < 0) goSlide(currentSlide + 1);
-    else goSlide(currentSlide - 1);
-  }
-});
-
-// ================================================================
-// SLIDE-SPECIFIC ANIMATIONS
-// ================================================================
-function onSlideEnter(idx) {
-  if (idx === 3) animateScoringTable();
-  if (idx === 4) startCanvasAnim();
-  if (idx === 5) animateBlastRadius();
-}
-
-// ================================================================
-// SLIDE 4: ANIMATED SCORING TABLE
-// ================================================================
-const SCORING_DATA = [
-  { pod: 'pod-02', adapter: 1.00, kv: 0.82, load: 0.75, gpu: 0.68, composite: 0.831, winner: true },
-  { pod: 'pod-05', adapter: 1.00, kv: 0.45, load: 0.88, gpu: 0.72, composite: 0.779, winner: false },
-  { pod: 'pod-00', adapter: 0.00, kv: 0.12, load: 0.92, gpu: 0.85, composite: 0.289, winner: false },
-  { pod: 'pod-01', adapter: 0.00, kv: 0.00, load: 0.80, gpu: 0.90, composite: 0.255, winner: false },
-  { pod: 'pod-03', adapter: 0.00, kv: 0.00, load: 0.60, gpu: 0.55, composite: 0.173, winner: false },
-  { pod: 'pod-04', adapter: 0.00, kv: 0.00, load: 0.35, gpu: 0.42, composite: 0.116, winner: false },
-];
-
-function animateScoringTable() {
-  const tbody = document.getElementById('scoringBody');
-  if (!tbody) return;
-  tbody.innerHTML = '';
-  const maxScore = SCORING_DATA[0].composite;
-
-  SCORING_DATA.forEach((row, i) => {
-    const tr = document.createElement('tr');
-    tr.className = row.winner ? 'winner' : '';
-    tr.style.opacity = '0';
-    tr.style.transform = 'translateY(10px)';
-    const pct = (row.composite / maxScore * 100);
-    tr.innerHTML = '<td style="font-weight:500">' + row.pod + '</td>'
-      + '<td>' + row.adapter.toFixed(2) + '</td>'
-      + '<td>' + row.kv.toFixed(2) + '</td>'
-      + '<td>' + row.load.toFixed(2) + '</td>'
-      + '<td>' + row.gpu.toFixed(2) + '</td>'
-      + '<td style="font-weight:700">' + row.composite.toFixed(3) + '</td>'
-      + '<td class="score-bar-cell"><div class="score-bar-bg"><div class="score-bar-fill' + (row.winner ? ' best' : '') + '" id="scoreBar' + i + '"></div></div></td>';
-    tbody.appendChild(tr);
-
-    // Stagger entry
-    setTimeout(() => {
-      tr.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-      tr.style.opacity = '1';
-      tr.style.transform = 'translateY(0)';
-    }, 200 + i * 100);
-
-    // Animate bar
-    setTimeout(() => {
-      const bar = document.getElementById('scoreBar' + i);
-      if (bar) bar.style.width = pct + '%';
-    }, 500 + i * 100);
-  });
-}
-
-// ================================================================
-// SLIDE 5: CANVAS-BASED ROUTING VISUALIZATION
-// ================================================================
-const DPR = window.devicePixelRatio || 1;
-const ADAPTER_DEFS = [
-  { id: 'legal',   name: 'legal-v2',        color: '#10b981', sizeMB: 25 },
-  { id: 'code',    name: 'code-review',      color: '#8b5cf6', sizeMB: 30 },
-  { id: 'medical', name: 'medical-qa',       color: '#ef4444', sizeMB: 20 },
-  { id: 'finance', name: 'finance-v3',       color: '#f59e0b', sizeMB: 28 },
-  { id: 'support', name: 'support-es',       color: '#06b6d4', sizeMB: 18 },
-];
-const NUM_PODS = 6;
-const MAX_SLOTS = 3;
-const BASE_LATENCY = 120;
-const SWAP_LATENCY = 1200;
-const POD_RADIUS = 32;
-
-class SimState {
-  constructor(mode) {
-    this.mode = mode;
-    this.pods = [];
-    this.rrIndex = 0;
-    this.totalSwaps = 0;
-    this.totalRequests = 0;
-    this.cacheHits = 0;
-    this.latencies = [];
-    this.particles = [];
-    this.bursts = [];
-    this.swapAnims = [];
-  }
-  initPods() {
-    this.pods = [];
-    for (let i = 0; i < NUM_PODS; i++) {
-      const adapters = [];
-      const count = 1 + (i % 2);
-      for (let j = 0; j < count; j++) {
-        const idx = (i * 2 + j) % ADAPTER_DEFS.length;
-        if (!adapters.includes(ADAPTER_DEFS[idx].id)) adapters.push(ADAPTER_DEFS[idx].id);
-      }
-      this.pods.push({
-        name: 'pod-' + String(i).padStart(2, '0'),
-        adapters,
-        gpuUtil: 18 + Math.random() * 28,
-        queueDepth: 0,
-        swaps: 0,
-        active: false,
-        activeTimer: 0,
-        loading: false,
-        loadTimer: 0,
-        kvCache: {},
-      });
-    }
-  }
-  avgLat() {
-    if (this.latencies.length === 0) return 0;
-    return Math.round(this.latencies.reduce((a, b) => a + b, 0) / this.latencies.length);
-  }
-}
-
-let rrState, smartState, simRunning = false, simAnimFrame = null;
-
-function initSim() {
-  rrState = new SimState('rr');
-  smartState = new SimState('smart');
-  rrState.initPods();
-  smartState.initPods();
-  // Copy initial state
-  for (let i = 0; i < NUM_PODS; i++) {
-    smartState.pods[i].adapters = [...rrState.pods[i].adapters];
-    smartState.pods[i].gpuUtil = rrState.pods[i].gpuUtil;
-  }
-}
-initSim();
-
-function getPodPositions(canvas) {
-  const w = canvas.width / DPR;
-  const h = canvas.height / DPR;
-  const positions = [];
-  const spacing = POD_RADIUS * 2.8;
-  const topRow = 3, botRow = 3;
-  for (let i = 0; i < topRow; i++) {
-    const startX = w / 2 - (topRow - 1) * spacing / 2;
-    positions.push({ x: startX + i * spacing, y: h / 2 - spacing * 0.4 + 18 });
-  }
-  for (let i = 0; i < botRow; i++) {
-    const startX = w / 2 - (botRow - 1) * spacing / 2;
-    positions.push({ x: startX + i * spacing, y: h / 2 + spacing * 0.4 + 18 });
-  }
-  return positions;
-}
-
-function setupCanvas(canvasId, wrapId) {
-  const canvas = document.getElementById(canvasId);
-  const wrap = document.getElementById(wrapId);
-  const rect = wrap.getBoundingClientRect();
-  canvas.width = rect.width * DPR;
-  canvas.height = rect.height * DPR;
-  canvas.style.width = rect.width + 'px';
-  canvas.style.height = rect.height + 'px';
-  return canvas;
-}
-
-function drawPodCanvas(ctx, pod, pos, time) {
-  const cx = pos.x, cy = pos.y, r = POD_RADIUS;
-
-  // Glow if active
-  if (pod.active) {
-    const g = ctx.createRadialGradient(cx, cy, r * 0.4, cx, cy, r * 1.5);
-    g.addColorStop(0, 'rgba(59,130,246,0.08)');
-    g.addColorStop(1, 'rgba(59,130,246,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.5, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Loading pulse
-  if (pod.loading) {
-    const alpha = 0.06 + Math.sin(time * 6) * 0.03;
-    const g = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy, r * 1.3);
-    g.addColorStop(0, 'rgba(245,158,11,' + (alpha + 0.06) + ')');
-    g.addColorStop(1, 'rgba(245,158,11,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r * 1.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // Adapter rings
-  pod.adapters.forEach((aid, ai) => {
-    const def = ADAPTER_DEFS.find(a => a.id === aid);
-    if (!def) return;
-    ctx.strokeStyle = def.color;
-    ctx.globalAlpha = 0.6;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, r + 4 + ai * 4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-  });
-
-  // Circle body
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  const fill = pod.active ? '#f0f6ff' : '#ffffff';
-  ctx.fillStyle = fill;
-  ctx.fill();
-  ctx.strokeStyle = pod.active ? 'rgba(59,130,246,0.4)' : 'rgba(0,0,0,0.08)';
-  ctx.lineWidth = pod.active ? 2 : 1;
-  ctx.stroke();
-
-  // Pod name
-  ctx.fillStyle = '#3b82f6';
-  ctx.font = '700 8px "Red Hat Display", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(pod.name, cx, cy - 8);
-
-  // Adapter names
-  const maxShow = Math.min(pod.adapters.length, 2);
-  for (let ai = 0; ai < maxShow; ai++) {
-    const def = ADAPTER_DEFS.find(a => a.id === pod.adapters[ai]);
-    if (!def) continue;
-    ctx.fillStyle = def.color;
-    ctx.font = '500 6px "Red Hat Text", sans-serif';
-    ctx.fillText(def.name, cx, cy + 3 + ai * 9);
-  }
-
-  // GPU bar
-  const barW = r * 0.9;
-  const barH = 2.5;
-  const barY = cy + r - 8;
-  ctx.fillStyle = 'rgba(0,0,0,0.04)';
-  ctx.beginPath();
-  ctx.roundRect(cx - barW / 2, barY, barW, barH, 1);
-  ctx.fill();
-  let gpuColor = '#3b82f6';
-  if (pod.gpuUtil > 80) gpuColor = '#ef4444';
-  else if (pod.gpuUtil > 60) gpuColor = '#f59e0b';
-  ctx.fillStyle = gpuColor;
-  ctx.beginPath();
-  ctx.roundRect(cx - barW / 2, barY, barW * (pod.gpuUtil / 100), barH, 1);
-  ctx.fill();
-
-  // Swap badge
-  if (pod.swaps > 0) {
-    const bx = cx + r - 4;
-    const by = cy - r + 4;
-    ctx.fillStyle = 'rgba(245,158,11,0.15)';
-    ctx.beginPath();
-    ctx.arc(bx, by, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = '700 6px "Red Hat Display", sans-serif';
-    ctx.fillText(pod.swaps, bx, by);
-  }
-
-  if (pod.loading) {
-    const pa = 0.4 + Math.sin(time * 6) * 0.2;
-    ctx.fillStyle = 'rgba(245,158,11,' + pa + ')';
-    ctx.font = '700 6px "Red Hat Display", sans-serif';
-    ctx.fillText('LOADING', cx, cy - r - 5);
-  }
-}
-
-function renderSim(canvasId, wrapId, state, time) {
-  const canvas = document.getElementById(canvasId);
-  const wrap = document.getElementById(wrapId);
-  const rect = wrap.getBoundingClientRect();
-  if (rect.width === 0) return;
-  if (canvas.width !== rect.width * DPR) {
-    canvas.width = rect.width * DPR;
-    canvas.height = rect.height * DPR;
+  /* ───── Canvas Utility ───── */
+  function sizeCanvas(canvas) {
+    var dpr = window.devicePixelRatio || 1;
+    var parent = canvas.parentElement;
+    var rect = parent.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
     canvas.style.width = rect.width + 'px';
     canvas.style.height = rect.height + 'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w: rect.width, h: rect.height, ctx: ctx };
   }
-  const ctx = canvas.getContext('2d');
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const w = rect.width, h = rect.height;
-  ctx.clearRect(0, 0, w, h);
 
-  // Subtle grid
-  ctx.strokeStyle = 'rgba(0,0,0,0.02)';
-  ctx.lineWidth = 0.5;
-  for (let gx = 0; gx < w; gx += 24) { ctx.beginPath(); ctx.moveTo(gx, 0); ctx.lineTo(gx, h); ctx.stroke(); }
-  for (let gy = 0; gy < h; gy += 24) { ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w, gy); ctx.stroke(); }
-
-  // Ingress
-  ctx.fillStyle = 'rgba(59,130,246,0.06)';
-  ctx.strokeStyle = 'rgba(59,130,246,0.15)';
-  ctx.lineWidth = 1;
-  const rw = 70, rh = 16;
-  ctx.beginPath();
-  ctx.roundRect(w / 2 - rw, 10, rw * 2, rh, 6);
-  ctx.fill();
-  ctx.stroke();
-  ctx.fillStyle = 'rgba(59,130,246,0.4)';
-  ctx.font = '500 7px "Red Hat Text", sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('INGRESS', w / 2, 18);
-
-  const positions = getPodPositions(canvas);
-
-  // Connection lines
-  ctx.strokeStyle = 'rgba(59,130,246,0.04)';
-  ctx.lineWidth = 0.5;
-  positions.forEach(pos => {
+  /* ───── RoundRect Helper ───── */
+  function roundRect(ctx, x, y, w, h, r) {
+    if (w < 0) { x += w; w = -w; }
+    if (h < 0) { y += h; h = -h; }
+    if (r > w / 2) r = w / 2;
+    if (r > h / 2) r = h / 2;
     ctx.beginPath();
-    ctx.moveTo(w / 2, 26);
-    ctx.lineTo(pos.x, pos.y - POD_RADIUS);
-    ctx.stroke();
-  });
+    ctx.moveTo(x + r, y);
+    ctx.lineTo(x + w - r, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+    ctx.lineTo(x + w, y + h - r);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    ctx.lineTo(x + r, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+    ctx.lineTo(x, y + r);
+    ctx.quadraticCurveTo(x, y, x + r, y);
+    ctx.closePath();
+  }
 
-  // Draw pods
-  state.pods.forEach((pod, i) => {
-    if (i < positions.length) drawPodCanvas(ctx, pod, positions[i], time);
-  });
+  /* ───── Easing ───── */
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function lerp(a, b, t) { return a + (b - a) * t; }
 
-  // Draw particles
-  state.particles.forEach(p => {
-    const t = p.progress;
-    const mt = 1 - t;
-    const px = mt * mt * mt * p.sx + 3 * mt * mt * t * p.c1x + 3 * mt * t * t * p.c2x + t * t * t * p.ex;
-    const py = mt * mt * mt * p.sy + 3 * mt * mt * t * p.c1y + 3 * mt * t * t * p.c2y + t * t * t * p.ey;
-    const fadeAlpha = t > 0.85 ? (1 - (t - 0.85) / 0.15) : (t < 0.1 ? t / 0.1 : 1);
-    ctx.save();
-    ctx.globalAlpha = fadeAlpha;
-    // Glow
-    const g = ctx.createRadialGradient(px, py, 0, px, py, 8);
-    g.addColorStop(0, p.color + '60');
-    g.addColorStop(1, p.color + '00');
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(px, py, 8, 0, Math.PI * 2);
-    ctx.fill();
-    // Core
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(px, py, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-
-  // Draw bursts
-  state.bursts.forEach(bp => {
-    ctx.save();
-    ctx.globalAlpha = bp.alpha;
-    ctx.fillStyle = bp.color;
-    ctx.beginPath();
-    ctx.arc(bp.x, bp.y, bp.radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  });
-
-  // Swap anims
-  state.swapAnims = state.swapAnims.filter(a => {
-    const elapsed = time - a.startTime;
-    if (elapsed > 1.5) return false;
-    const alpha = 1 - elapsed / 1.5;
-    ctx.save();
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = '#f59e0b';
-    ctx.font = '700 8px "Red Hat Display", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(a.text, a.x, a.y - POD_RADIUS - 10 - elapsed * 18);
-    ctx.restore();
-    return true;
-  });
-}
-
-function pickAdapter() {
-  return ADAPTER_DEFS[Math.floor(Math.random() * ADAPTER_DEFS.length)];
-}
-
-function routeRR(state) {
-  const idx = state.rrIndex % state.pods.length;
-  state.rrIndex++;
-  return idx;
-}
-
-function routeSmart(state, adapterId) {
-  let bestIdx = 0, bestScore = -1;
-  state.pods.forEach((pod, idx) => {
-    const hasAdapter = pod.adapters.includes(adapterId) ? 1 : 0;
-    const kv = pod.kvCache[adapterId] || 0;
-    const load = Math.max(0, 1 - pod.queueDepth / 8);
-    const gpu = Math.max(0, 1 - pod.gpuUtil / 100);
-    const score = hasAdapter * 0.50 + kv * 0.20 + load * 0.15 + gpu * 0.15;
-    if (score > bestScore) { bestScore = score; bestIdx = idx; }
-  });
-  return bestIdx;
-}
-
-function processRoute(state, podIdx, adapterId, canvasId) {
-  const pod = state.pods[podIdx];
-  const had = pod.adapters.includes(adapterId);
-  let lat = BASE_LATENCY + Math.random() * 60;
-
-  if (!had) {
-    state.totalSwaps++;
-    pod.swaps++;
-    lat += SWAP_LATENCY + Math.random() * 400;
-    if (pod.adapters.length >= MAX_SLOTS) pod.adapters.shift();
-    pod.adapters.push(adapterId);
-    pod.loading = true;
-    pod.loadTimer = 20;
-
-    const canvas = document.getElementById(canvasId);
-    const positions = getPodPositions(canvas);
-    if (podIdx < positions.length) {
-      state.swapAnims.push({ x: positions[podIdx].x, y: positions[podIdx].y, text: '+' + Math.round(lat - BASE_LATENCY) + 'ms', startTime: performance.now() / 1000 });
-      createBurst(state, positions[podIdx], '#ef4444');
+  /* ───── Safe RAF ───── */
+  function safeRAF(key, fn) {
+    if (animFrames[key]) cancelAnimationFrame(animFrames[key]);
+    function loop() {
+      if (isHidden) { animFrames[key] = null; return; }
+      fn();
+      animFrames[key] = requestAnimationFrame(loop);
     }
-  } else {
-    state.cacheHits++;
-    lat -= (pod.kvCache[adapterId] || 0) * 40;
-    const canvas = document.getElementById(canvasId);
-    const positions = getPodPositions(canvas);
-    if (podIdx < positions.length) createBurst(state, positions[podIdx], '#22c55e');
+    animFrames[key] = requestAnimationFrame(loop);
   }
 
-  pod.kvCache[adapterId] = Math.min(1, (pod.kvCache[adapterId] || 0) + 0.18);
-  pod.queueDepth = Math.min(8, pod.queueDepth + 1);
-  pod.gpuUtil = Math.min(95, pod.gpuUtil + 4 + Math.random() * 8);
-  pod.active = true;
-  pod.activeTimer = 10;
-  state.totalRequests++;
-  state.latencies.push(Math.max(40, lat));
-  if (state.latencies.length > 100) state.latencies.shift();
+  /* ═══════════════════════════════════════════════════════
+     NAVIGATION
+     ═══════════════════════════════════════════════════════ */
+  var track = document.getElementById('slidesTrack');
+  var slides = document.querySelectorAll('.slide');
+  var dotsContainer = document.getElementById('navDots');
+  var prevBtn = document.getElementById('prevBtn');
+  var nextBtn = document.getElementById('nextBtn');
+  var progressBar = document.getElementById('progressBar');
+  var counter = document.getElementById('slideCounter');
 
-  // Create particle
-  const canvas = document.getElementById(canvasId);
-  const positions = getPodPositions(canvas);
-  if (podIdx < positions.length) {
-    const w = canvas.width / DPR;
-    const def = ADAPTER_DEFS.find(a => a.id === adapterId);
-    const sx = w / 2 + (Math.random() - 0.5) * 60;
-    const sy = 26;
-    const ex = positions[podIdx].x;
-    const ey = positions[podIdx].y;
-    state.particles.push({
-      sx, sy, ex, ey,
-      c1x: sx + (Math.random() - 0.5) * 50,
-      c1y: sy + (ey - sy) * 0.3,
-      c2x: ex + (Math.random() - 0.5) * 30,
-      c2y: sy + (ey - sy) * 0.7,
-      progress: 0,
-      speed: 0.02,
-      color: def ? def.color : '#3b82f6',
-    });
+  /* Build dots */
+  for (var d = 0; d < TOTAL; d++) {
+    var dot = document.createElement('div');
+    dot.className = 'dot' + (d === 0 ? ' active' : '');
+    dot.setAttribute('data-idx', d);
+    dot.addEventListener('click', (function(i) {
+      return function() { goToSlide(i); };
+    })(d));
+    dotsContainer.appendChild(dot);
   }
-}
 
-function createBurst(state, pos, color) {
-  if (state.bursts.length > 60) state.bursts = state.bursts.slice(-30);
-  for (let i = 0; i < 4; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 30 + Math.random() * 50;
-    state.bursts.push({
-      x: pos.x, y: pos.y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed,
-      radius: 1.5 + Math.random(),
-      color, alpha: 1,
-      life: 0, maxLife: 0.4 + Math.random() * 0.1,
-    });
-  }
-}
-
-let simTickAccum = 0, simLastTick = 0;
-const SIM_TICK_MS = 400;
-
-function simLoop(ts) {
-  simAnimFrame = requestAnimationFrame(simLoop);
-  const time = ts / 1000;
-
-  if (simRunning) {
-    if (!simLastTick) simLastTick = ts;
-    const dt = ts - simLastTick;
-    simLastTick = ts;
-    simTickAccum += dt;
-    if (simTickAccum >= SIM_TICK_MS) {
-      simTickAccum -= SIM_TICK_MS;
-      if (simTickAccum > SIM_TICK_MS) simTickAccum = 0;
-      simTick();
+  function goToSlide(idx) {
+    if (idx < 0 || idx >= TOTAL) return;
+    currentSlide = idx;
+    track.style.transform = 'translateX(-' + (idx * 100) + 'vw)';
+    for (var i = 0; i < slides.length; i++) {
+      if (i === idx) {
+        slides[i].classList.add('active');
+      } else {
+        slides[i].classList.remove('active');
+      }
     }
-  } else {
-    simLastTick = ts;
+    var dots = dotsContainer.querySelectorAll('.dot');
+    for (var j = 0; j < dots.length; j++) {
+      if (j === idx) {
+        dots[j].classList.add('active');
+      } else {
+        dots[j].classList.remove('active');
+      }
+    }
+    prevBtn.disabled = (idx === 0);
+    nextBtn.disabled = (idx === TOTAL - 1);
+    progressBar.style.width = ((idx / (TOTAL - 1)) * 100) + '%';
+    counter.textContent = 'Slide ' + (idx + 1) + ' of ' + TOTAL;
   }
 
-  // Update particles
-  const frameDt = 1 / 60;
-  [rrState, smartState].forEach(s => {
-    s.particles.forEach(p => p.progress += p.speed);
-    s.particles = s.particles.filter(p => p.progress < 1);
-    s.bursts.forEach(b => {
-      b.life += frameDt;
-      b.x += b.vx * frameDt;
-      b.y += b.vy * frameDt;
-      b.vx *= 0.95;
-      b.vy *= 0.95;
-      b.alpha = Math.max(0, 1 - b.life / b.maxLife);
-    });
-    s.bursts = s.bursts.filter(b => b.life < b.maxLife);
+  prevBtn.addEventListener('click', function() { goToSlide(currentSlide - 1); });
+  nextBtn.addEventListener('click', function() { goToSlide(currentSlide + 1); });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goToSlide(currentSlide + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goToSlide(currentSlide - 1); }
   });
 
-  // Render
-  if (currentSlide === 4) {
-    renderSim('rrCanvas', 'rrCanvasWrap', rrState, time);
-    renderSim('smartCanvas', 'smartCanvasWrap', smartState, time);
-  }
-}
-
-function simTick() {
-  // Decay
-  [rrState, smartState].forEach(s => {
-    s.pods.forEach(pod => {
-      pod.gpuUtil = Math.max(14, pod.gpuUtil - 0.6 - Math.random() * 0.6);
-      pod.queueDepth = Math.max(0, pod.queueDepth - (Math.random() < 0.35 ? 1 : 0));
-      if (pod.activeTimer > 0) { pod.activeTimer--; if (pod.activeTimer <= 0) pod.active = false; }
-      if (pod.loadTimer > 0) { pod.loadTimer--; if (pod.loadTimer <= 0) pod.loading = false; }
-      Object.keys(pod.kvCache).forEach(k => { pod.kvCache[k] = Math.max(0, pod.kvCache[k] - 0.012); });
-    });
+  /* ───── Visibility ───── */
+  document.addEventListener('visibilitychange', function() {
+    isHidden = document.hidden;
+    if (!isHidden) startAllAnimations();
   });
 
-  const adapter = pickAdapter();
-  const rrIdx = routeRR(rrState);
-  processRoute(rrState, rrIdx, adapter.id, 'rrCanvas');
-  const smartIdx = routeSmart(smartState, adapter.id);
-  processRoute(smartState, smartIdx, adapter.id, 'smartCanvas');
-
-  // Update displays
-  document.getElementById('rrSwapsDisp').textContent = rrState.totalSwaps;
-  document.getElementById('rrLatDisp').textContent = rrState.avgLat();
-  document.getElementById('smartSwapsDisp').textContent = smartState.totalSwaps;
-  document.getElementById('smartLatDisp').textContent = smartState.avgLat();
-
-  // Update hero stat
-  if (rrState.totalRequests > 8 && smartState.totalRequests > 8) {
-    const rrSwapRate = rrState.totalSwaps / rrState.totalRequests;
-    const smartSwapRate = smartState.totalSwaps / smartState.totalRequests;
-    if (smartSwapRate > 0) {
-      document.getElementById('heroStat').textContent = (rrSwapRate / smartSwapRate).toFixed(1) + 'x';
-    }
-  }
-}
-
-function toggleSim() {
-  simRunning = !simRunning;
-  const btn = document.getElementById('simBtn');
-  if (simRunning) {
-    btn.innerHTML = '&#9646;&#9646; Pause';
-    btn.style.background = 'var(--text)';
-    btn.style.borderColor = 'var(--text)';
-  } else {
-    btn.innerHTML = '&#9654; Play Simulation';
-    btn.style.background = 'var(--blue)';
-    btn.style.borderColor = 'var(--blue)';
-  }
-}
-
-function resetSim() {
-  simRunning = false;
-  initSim();
-  document.getElementById('rrSwapsDisp').textContent = '0';
-  document.getElementById('rrLatDisp').textContent = '0';
-  document.getElementById('smartSwapsDisp').textContent = '0';
-  document.getElementById('smartLatDisp').textContent = '0';
-  document.getElementById('heroStat').textContent = '3.2x';
-  const btn = document.getElementById('simBtn');
-  btn.innerHTML = '&#9654; Play Simulation';
-  btn.style.background = 'var(--blue)';
-  btn.style.borderColor = 'var(--blue)';
-}
-
-function startCanvasAnim() {
-  // Setup canvases
-  setTimeout(() => {
-    setupCanvas('rrCanvas', 'rrCanvasWrap');
-    setupCanvas('smartCanvas', 'smartCanvasWrap');
-  }, 400);
-}
-
-// ================================================================
-// SLIDE 6: BLAST RADIUS ANIMATIONS
-// ================================================================
-function animateBlastRadius() {
-  // Animate swap phase bars
-  setTimeout(() => {
-    const phases = document.querySelectorAll('#swapBarAnim .swap-phase');
-    phases.forEach(p => { p.style.width = p.dataset.pct + '%'; });
-  }, 500);
-
-  // Animate bar chart
-  setTimeout(() => {
-    ['bar1', 'bar2', 'bar3', 'bar4'].forEach(id => {
-      const bar = document.getElementById(id);
-      if (bar) bar.style.height = bar.dataset.height + '%';
+  /* ───── Copy Code ───── */
+  window.copyCode = function(button) {
+    var pre = button.parentElement.querySelector('pre');
+    navigator.clipboard.writeText(pre.textContent).then(function() {
+      button.textContent = 'Copied!';
+      setTimeout(function() { button.textContent = 'Copy'; }, 2000);
     });
-  }, 700);
-}
+  };
 
-// ================================================================
-// INIT
-// ================================================================
-function init() {
-  // Initial progress
-  progressBar.style.width = (1 / TOTAL_SLIDES * 100) + '%';
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 1: Hero Particle Network
+     50+ particles with connection lines, glow, multi-color
+     ═══════════════════════════════════════════════════════ */
+  var heroDrawFn = (function() {
+    var canvas = document.getElementById('heroCanvas');
+    var particles = [];
+    var NUM = 55;
+    var colors = ['#f59e0b', '#f5736c', '#3b82f6', '#7c3aed', '#10b981'];
+    var dim = { w: 0, h: 0, ctx: null };
 
-  // Start simulation render loop (runs in background)
-  simAnimFrame = requestAnimationFrame(simLoop);
-
-  // Trigger initial slide animations
-  onSlideEnter(0);
-}
-
-// Handle visibility changes
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) {
-    if (simAnimFrame) { cancelAnimationFrame(simAnimFrame); simAnimFrame = null; }
-  } else {
-    if (!simAnimFrame) { simLastTick = 0; simTickAccum = 0; simAnimFrame = requestAnimationFrame(simLoop); }
-  }
-});
-
-// Handle resize
-let resizeTimer;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (currentSlide === 4) {
-      setupCanvas('rrCanvas', 'rrCanvasWrap');
-      setupCanvas('smartCanvas', 'smartCanvasWrap');
+    function init() {
+      dim = sizeCanvas(canvas);
+      particles = [];
+      for (var i = 0; i < NUM; i++) {
+        particles.push({
+          x: Math.random() * dim.w,
+          y: Math.random() * dim.h,
+          size: 2 + Math.random() * 3.5,
+          speedX: (Math.random() - 0.5) * 0.25,
+          speedY: (Math.random() - 0.5) * 0.25,
+          color: colors[i % colors.length],
+          alpha: 0.25 + Math.random() * 0.55
+        });
+      }
     }
-  }, 100);
-});
 
-init();
+    function draw() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+
+      /* Connection lines between nearby particles */
+      for (var i = 0; i < particles.length; i++) {
+        for (var j = i + 1; j < particles.length; j++) {
+          var dx = particles[i].x - particles[j].x;
+          var dy = particles[i].y - particles[j].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 170) {
+            var opac = 0.14 * (1 - dist / 170);
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(245,158,11,' + opac + ')';
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* Render each particle with glow + core */
+      for (var k = 0; k < particles.length; k++) {
+        var p = particles[k];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < -10) p.x = dim.w + 10;
+        if (p.x > dim.w + 10) p.x = -10;
+        if (p.y < -10) p.y = dim.h + 10;
+        if (p.y > dim.h + 10) p.y = -10;
+
+        /* Glow */
+        ctx.save();
+        ctx.globalAlpha = p.alpha * 0.18;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size * 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Outer halo */
+        ctx.save();
+        ctx.globalAlpha = p.alpha * 0.35;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Core */
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* Bright center */
+        ctx.beginPath();
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = p.alpha * 0.6;
+        ctx.arc(p.x, p.y, p.size * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return draw;
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 2: Problem - GPU Contention
+     Requests bouncing chaotically, red warning pulses, GPU overflow bar
+     ═══════════════════════════════════════════════════════ */
+  var problemDrawFn = (function() {
+    var canvas = document.getElementById('problemCanvas');
+    var dim = { w: 0, h: 0, ctx: null };
+    var gpuPods = [];
+    var requests = [];
+    var warningTime = 0;
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      gpuPods = [
+        { x: dim.w * 0.12, y: dim.h * 0.28, label: 'Legal GPU', util: 0.25 },
+        { x: dim.w * 0.30, y: dim.h * 0.22, label: 'Medical GPU', util: 0.32 },
+        { x: dim.w * 0.50, y: dim.h * 0.30, label: 'Code GPU', util: 0.20 },
+        { x: dim.w * 0.70, y: dim.h * 0.24, label: 'Support GPU', util: 0.38 },
+        { x: dim.w * 0.88, y: dim.h * 0.28, label: 'Finance GPU', util: 0.22 }
+      ];
+      requests = [];
+      for (var i = 0; i < 15; i++) {
+        requests.push({
+          x: dim.w * 0.08 + Math.random() * dim.w * 0.84,
+          y: dim.h * 0.48 + Math.random() * dim.h * 0.38,
+          speedX: (Math.random() - 0.5) * 0.6,
+          speedY: (Math.random() - 0.5) * 0.5,
+          size: 3 + Math.random() * 5,
+          color: ['#f5736c', '#f59e0b', '#e11d48'][Math.floor(Math.random() * 3)],
+          alpha: 0.5 + Math.random() * 0.4
+        });
+      }
+    }
+
+    function draw() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+      warningTime += 0.008;
+      var pulse = 0.4 + 0.35 * Math.sin(warningTime * 1.8);
+
+      /* GPU Memory overflow bar */
+      var barX = dim.w * 0.06;
+      var barY = dim.h * 0.68;
+      var barW = dim.w * 0.88;
+      var barH = 22;
+      var fillFrac = 0.88 + 0.05 * Math.sin(warningTime * 1.1);
+
+      roundRect(ctx, barX, barY, barW, barH, 11);
+      ctx.fillStyle = 'rgba(245,115,108,0.06)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245,115,108,0.25)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      var fillW = barW * fillFrac;
+      roundRect(ctx, barX, barY, fillW, barH, 11);
+      var barGrad = ctx.createLinearGradient(barX, barY, barX + fillW, barY);
+      barGrad.addColorStop(0, 'rgba(245,115,108,0.55)');
+      barGrad.addColorStop(0.7, 'rgba(245,158,11,0.65)');
+      barGrad.addColorStop(1, 'rgba(225,29,72,0.7)');
+      ctx.fillStyle = barGrad;
+      ctx.fill();
+
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '500 11px "Red Hat Text", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GPU Memory: ' + Math.round(fillFrac * 100) + '%', barX + barW / 2, barY + 15);
+      ctx.restore();
+
+      /* Overflow warning */
+      ctx.save();
+      ctx.fillStyle = 'rgba(225,29,72,' + pulse * 0.8 + ')';
+      ctx.font = '700 11px "Red Hat Display", sans-serif';
+      ctx.textAlign = 'left';
+      ctx.fillText('OVERFLOW RISK', barX + barW + 12, barY + 15);
+      ctx.restore();
+
+      /* GPU Pod boxes with warning pulse */
+      for (var i = 0; i < gpuPods.length; i++) {
+        var pod = gpuPods[i];
+
+        /* Pulsing ring */
+        ctx.beginPath();
+        ctx.arc(pod.x, pod.y, 34 + pulse * 12, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245,115,108,' + (pulse * 0.12) + ')';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pod.x, pod.y, 28 + pulse * 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(245,115,108,' + (pulse * 0.08) + ')';
+        ctx.fill();
+
+        /* Pod box */
+        roundRect(ctx, pod.x - 44, pod.y - 20, 88, 40, 10);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(245,115,108,' + (0.3 + pulse * 0.3) + ')';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = '#2d2a26';
+        ctx.font = '700 10px "Red Hat Display", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(pod.label, pod.x, pod.y - 3);
+
+        /* Utilization micro bar */
+        var uW = 56;
+        roundRect(ctx, pod.x - uW / 2, pod.y + 6, uW, 5, 2.5);
+        ctx.fillStyle = 'rgba(245,115,108,0.12)';
+        ctx.fill();
+        roundRect(ctx, pod.x - uW / 2, pod.y + 6, uW * pod.util, 5, 2.5);
+        ctx.fillStyle = '#f5736c';
+        ctx.fill();
+
+        ctx.fillStyle = '#6b6560';
+        ctx.font = '400 8px "Red Hat Text", sans-serif';
+        ctx.fillText(Math.round(pod.util * 100) + '% used', pod.x, pod.y + 24);
+        ctx.restore();
+      }
+
+      /* Chaotic bouncing requests */
+      for (var r = 0; r < requests.length; r++) {
+        var req = requests[r];
+        req.x += req.speedX;
+        req.y += req.speedY;
+        if (req.x < 15 || req.x > dim.w - 15) req.speedX *= -1;
+        if (req.y < dim.h * 0.42 || req.y > dim.h * 0.96) req.speedY *= -1;
+
+        /* Glow trail */
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.beginPath();
+        ctx.fillStyle = req.color;
+        ctx.arc(req.x, req.y, req.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Outer ring */
+        ctx.save();
+        ctx.globalAlpha = req.alpha * 0.4;
+        ctx.beginPath();
+        ctx.fillStyle = req.color;
+        ctx.arc(req.x, req.y, req.size * 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Core */
+        ctx.save();
+        ctx.globalAlpha = req.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = req.color;
+        ctx.arc(req.x, req.y, req.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      /* Collision sparks between nearby requests */
+      for (var a = 0; a < requests.length; a++) {
+        for (var b = a + 1; b < requests.length; b++) {
+          var dx = requests[a].x - requests[b].x;
+          var dy = requests[a].y - requests[b].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 70) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(245,115,108,' + (0.25 * (1 - dist / 70)) + ')';
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(requests[a].x, requests[a].y);
+            ctx.lineTo(requests[b].x, requests[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return draw;
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 3: LoRA Visualization
+     Base model center, adapter layers orbiting, particles along orbit,
+     low-rank decomposition flowing particles
+     ═══════════════════════════════════════════════════════ */
+  var loraDrawFn = (function() {
+    var canvas = document.getElementById('loraCanvas');
+    var bgCanvas = document.getElementById('loraBgCanvas');
+    var dim = { w: 0, h: 0, ctx: null };
+    var bgDim = { w: 0, h: 0, ctx: null };
+    var time = 0;
+    var bgParticles = [];
+    var orbitParticles = [];
+
+    var adapters = [
+      { label: 'Legal', size: '2.8 GB', color: '#7c3aed', angle: 0 },
+      { label: 'Code', size: '4.2 GB', color: '#3b82f6', angle: Math.PI * 0.5 },
+      { label: 'Medical', size: '2.1 GB', color: '#10b981', angle: Math.PI },
+      { label: 'Finance', size: '3.5 GB', color: '#f59e0b', angle: Math.PI * 1.5 }
+    ];
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      bgDim = sizeCanvas(bgCanvas);
+      bgParticles = [];
+      for (var i = 0; i < 35; i++) {
+        bgParticles.push({
+          x: Math.random() * bgDim.w,
+          y: Math.random() * bgDim.h,
+          size: 1.2 + Math.random() * 2.2,
+          speedX: (Math.random() - 0.5) * 0.18,
+          speedY: (Math.random() - 0.5) * 0.18,
+          alpha: 0.12 + Math.random() * 0.25,
+          color: ['#7c3aed', '#3b82f6', '#10b981'][Math.floor(Math.random() * 3)]
+        });
+      }
+      orbitParticles = [];
+      for (var j = 0; j < 14; j++) {
+        orbitParticles.push({
+          angle: (Math.PI * 2 / 14) * j,
+          speed: 0.003 + Math.random() * 0.003,
+          size: 1.5 + Math.random() * 1.5,
+          color: adapters[j % 4].color,
+          orbitOffset: 0.9 + Math.random() * 0.2
+        });
+      }
+    }
+
+    function drawBg() {
+      var ctx = bgDim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, bgDim.w, bgDim.h);
+
+      for (var i = 0; i < bgParticles.length; i++) {
+        var p = bgParticles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > bgDim.w) p.speedX *= -1;
+        if (p.y < 0 || p.y > bgDim.h) p.speedY *= -1;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha * 0.25;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      /* Connection web */
+      for (var a = 0; a < bgParticles.length; a++) {
+        for (var b = a + 1; b < bgParticles.length; b++) {
+          var dx = bgParticles[a].x - bgParticles[b].x;
+          var dy = bgParticles[a].y - bgParticles[b].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 110) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(124,58,237,' + (0.08 * (1 - dist / 110)) + ')';
+            ctx.lineWidth = 0.6;
+            ctx.moveTo(bgParticles[a].x, bgParticles[a].y);
+            ctx.lineTo(bgParticles[b].x, bgParticles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function drawMain() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+      time += 0.006;
+
+      var cx = dim.w / 2;
+      var cy = dim.h / 2;
+      var orbitR = Math.min(dim.w, dim.h) * 0.33;
+
+      /* Outer orbit ring */
+      ctx.beginPath();
+      ctx.arc(cx, cy, orbitR + 8, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(124,58,237,0.06)';
+      ctx.lineWidth = 16;
+      ctx.stroke();
+
+      /* Dashed orbit */
+      ctx.beginPath();
+      ctx.arc(cx, cy, orbitR, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(124,58,237,0.15)';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([5, 7]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      /* Inner orbit */
+      ctx.beginPath();
+      ctx.arc(cx, cy, orbitR * 0.6, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(59,130,246,0.08)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      /* Base model center glow */
+      ctx.save();
+      var baseGlow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 55);
+      baseGlow.addColorStop(0, 'rgba(59,130,246,0.2)');
+      baseGlow.addColorStop(0.6, 'rgba(59,130,246,0.06)');
+      baseGlow.addColorStop(1, 'rgba(59,130,246,0)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, 55, 0, Math.PI * 2);
+      ctx.fillStyle = baseGlow;
+      ctx.fill();
+      ctx.restore();
+
+      /* Base model circle */
+      ctx.beginPath();
+      ctx.arc(cx, cy, 42, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fill();
+      ctx.strokeStyle = '#3b82f6';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.fillStyle = '#3b82f6';
+      ctx.font = '700 12px "Red Hat Display", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Base Model', cx, cy - 6);
+      ctx.font = '400 9px "Red Hat Text", sans-serif';
+      ctx.fillStyle = '#6b6560';
+      ctx.fillText('Llama 3.1 70B', cx, cy + 8);
+      ctx.restore();
+
+      /* Adapters orbiting */
+      for (var i = 0; i < adapters.length; i++) {
+        var a = adapters[i];
+        var angle = a.angle + time * (0.8 + i * 0.08);
+        var ax = cx + Math.cos(angle) * orbitR;
+        var ay = cy + Math.sin(angle) * orbitR;
+
+        /* Connection beam to center */
+        ctx.save();
+        ctx.globalAlpha = 0.15 + 0.08 * Math.sin(time * 1.5 + i);
+        ctx.beginPath();
+        ctx.moveTo(cx, cy);
+        ctx.lineTo(ax, ay);
+        ctx.strokeStyle = a.color;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        /* Adapter glow */
+        ctx.save();
+        ctx.globalAlpha = 0.12;
+        ctx.beginPath();
+        ctx.arc(ax, ay, 26, 0, Math.PI * 2);
+        ctx.fillStyle = a.color;
+        ctx.fill();
+        ctx.restore();
+
+        /* Adapter circle */
+        ctx.beginPath();
+        ctx.arc(ax, ay, 18, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fill();
+        ctx.strokeStyle = a.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = a.color;
+        ctx.font = '700 9px "Red Hat Display", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(a.label, ax, ay - 3);
+        ctx.font = '400 7px "Red Hat Text", sans-serif';
+        ctx.fillStyle = '#6b6560';
+        ctx.fillText(a.size, ax, ay + 7);
+        ctx.restore();
+      }
+
+      /* Flowing orbit particles */
+      for (var op = 0; op < orbitParticles.length; op++) {
+        var opart = orbitParticles[op];
+        opart.angle += opart.speed;
+        var opx = cx + Math.cos(opart.angle) * orbitR * opart.orbitOffset;
+        var opy = cy + Math.sin(opart.angle) * orbitR * opart.orbitOffset;
+
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        ctx.beginPath();
+        ctx.fillStyle = opart.color;
+        ctx.arc(opx, opy, opart.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.fillStyle = opart.color;
+        ctx.arc(opx, opy, opart.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      /* Inner decomposition particles (smaller orbit) */
+      for (var dp = 0; dp < 6; dp++) {
+        var dpAngle = time * 0.5 + dp * (Math.PI * 2 / 6);
+        var dpx = cx + Math.cos(dpAngle) * orbitR * 0.6;
+        var dpy = cy + Math.sin(dpAngle) * orbitR * 0.6;
+        ctx.save();
+        ctx.globalAlpha = 0.4;
+        ctx.beginPath();
+        ctx.fillStyle = '#3b82f6';
+        ctx.arc(dpx, dpy, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return function() { drawBg(); drawMain(); };
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 4: Routing with EPP
+     EPP router at top, pods below with adapter rings,
+     request particles flow along bezier curves with trails and glow
+     ═══════════════════════════════════════════════════════ */
+  var routingDrawFn = (function() {
+    var canvas = document.getElementById('routingCanvas');
+    var bgCanvas = document.getElementById('routingBgCanvas');
+    var dim = { w: 0, h: 0, ctx: null };
+    var bgDim = { w: 0, h: 0, ctx: null };
+    var time = 0;
+    var requestDots = [];
+    var bgParticles = [];
+
+    var pods = [
+      { label: 'Pod-00', adapters: ['Legal', 'Code'], color: '#3b82f6' },
+      { label: 'Pod-01', adapters: ['Medical'], color: '#10b981' },
+      { label: 'Pod-02', adapters: ['Finance', 'Support'], color: '#f59e0b' }
+    ];
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      bgDim = sizeCanvas(bgCanvas);
+
+      requestDots = [];
+      for (var i = 0; i < 8; i++) {
+        requestDots.push({
+          t: Math.random(),
+          speed: 0.0012 + Math.random() * 0.002,
+          targetPod: Math.floor(Math.random() * 3),
+          size: 3 + Math.random() * 2.5,
+          trail: [],
+          color: ['#f59e0b', '#f5736c', '#7c3aed'][Math.floor(Math.random() * 3)]
+        });
+      }
+
+      bgParticles = [];
+      for (var j = 0; j < 30; j++) {
+        bgParticles.push({
+          x: Math.random() * bgDim.w,
+          y: Math.random() * bgDim.h,
+          size: 1 + Math.random() * 2,
+          speedX: (Math.random() - 0.5) * 0.15,
+          speedY: (Math.random() - 0.5) * 0.15,
+          alpha: 0.08 + Math.random() * 0.18,
+          color: '#f59e0b'
+        });
+      }
+    }
+
+    function drawBg() {
+      var ctx = bgDim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, bgDim.w, bgDim.h);
+
+      for (var i = 0; i < bgParticles.length; i++) {
+        var p = bgParticles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > bgDim.w) p.speedX *= -1;
+        if (p.y < 0 || p.y > bgDim.h) p.speedY *= -1;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (var a = 0; a < bgParticles.length; a++) {
+        for (var b = a + 1; b < bgParticles.length; b++) {
+          var dx = bgParticles[a].x - bgParticles[b].x;
+          var dy = bgParticles[a].y - bgParticles[b].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(245,158,11,' + (0.06 * (1 - dist / 100)) + ')';
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(bgParticles[a].x, bgParticles[a].y);
+            ctx.lineTo(bgParticles[b].x, bgParticles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function bezierPoint(p0, p1, p2, p3, t) {
+      var u = 1 - t;
+      return {
+        x: u*u*u*p0.x + 3*u*u*t*p1.x + 3*u*t*t*p2.x + t*t*t*p3.x,
+        y: u*u*u*p0.y + 3*u*u*t*p1.y + 3*u*t*t*p2.y + t*t*t*p3.y
+      };
+    }
+
+    function drawMain() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+      time += 0.008;
+
+      var eppX = dim.w / 2;
+      var eppY = 55;
+      var ingressX = dim.w / 2;
+      var ingressY = 18;
+
+      var podPositions = [
+        { x: dim.w * 0.17, y: dim.h - 55 },
+        { x: dim.w * 0.50, y: dim.h - 55 },
+        { x: dim.w * 0.83, y: dim.h - 55 }
+      ];
+
+      /* Ingress label */
+      ctx.save();
+      ctx.fillStyle = '#6b6560';
+      ctx.font = '500 10px "Red Hat Text", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Incoming Requests', ingressX, 13);
+      ctx.restore();
+
+      /* Subtle path lines */
+      for (var pl = 0; pl < 3; pl++) {
+        var tgt = podPositions[pl];
+        ctx.beginPath();
+        ctx.moveTo(ingressX, ingressY);
+        ctx.bezierCurveTo(eppX - 10 + pl * 10, eppY + 10, lerp(eppX, tgt.x, 0.5), lerp(eppY, tgt.y, 0.35), tgt.x, tgt.y - 28);
+        ctx.strokeStyle = 'rgba(245,158,11,0.07)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      /* EPP Router node with glow */
+      ctx.save();
+      ctx.globalAlpha = 0.1;
+      ctx.beginPath();
+      ctx.arc(eppX, eppY, 42, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fill();
+      ctx.restore();
+
+      roundRect(ctx, eppX - 55, eppY - 18, 110, 36, 14);
+      var eppGrad = ctx.createLinearGradient(eppX - 55, eppY, eppX + 55, eppY);
+      eppGrad.addColorStop(0, 'rgba(245,158,11,0.18)');
+      eppGrad.addColorStop(1, 'rgba(245,158,11,0.06)');
+      ctx.fillStyle = eppGrad;
+      ctx.fill();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.save();
+      ctx.fillStyle = '#f59e0b';
+      ctx.font = '700 12px "Red Hat Display", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('EPP Router', eppX, eppY);
+      ctx.restore();
+
+      /* Scoring label */
+      ctx.save();
+      ctx.fillStyle = '#6b6560';
+      ctx.font = '400 8px "Red Hat Text", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('scoring & routing', eppX, eppY + 26);
+      ctx.restore();
+
+      /* Pods */
+      for (var i = 0; i < 3; i++) {
+        var pp = podPositions[i];
+        var pod = pods[i];
+
+        /* Pod glow */
+        ctx.save();
+        ctx.globalAlpha = 0.06;
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, 40, 0, Math.PI * 2);
+        ctx.fillStyle = pod.color;
+        ctx.fill();
+        ctx.restore();
+
+        roundRect(ctx, pp.x - 52, pp.y - 26, 104, 52, 12);
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fill();
+        ctx.strokeStyle = pod.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = '#2d2a26';
+        ctx.font = '700 10px "Red Hat Display", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText(pod.label, pp.x, pp.y - 8);
+
+        /* Adapter rings */
+        for (var ad = 0; ad < pod.adapters.length; ad++) {
+          var ringX = pp.x - ((pod.adapters.length - 1) * 18) / 2 + ad * 18;
+          ctx.beginPath();
+          ctx.arc(ringX, pp.y + 5, 6, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(124,58,237,0.12)';
+          ctx.fill();
+          ctx.strokeStyle = '#7c3aed';
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+        }
+
+        ctx.fillStyle = '#6b6560';
+        ctx.font = '400 7px "Red Hat Text", sans-serif';
+        ctx.fillText(pod.adapters.join(', '), pp.x, pp.y + 22);
+        ctx.restore();
+      }
+
+      /* Animated request dots along bezier curves */
+      for (var r = 0; r < requestDots.length; r++) {
+        var rd = requestDots[r];
+        rd.t += rd.speed;
+        if (rd.t > 1) {
+          rd.t = 0;
+          rd.targetPod = Math.floor(Math.random() * 3);
+          rd.trail = [];
+          rd.color = ['#f59e0b', '#f5736c', '#7c3aed'][Math.floor(Math.random() * 3)];
+        }
+
+        var target = podPositions[rd.targetPod];
+        var p0 = { x: ingressX, y: ingressY };
+        var p1 = { x: eppX + (rd.targetPod - 1) * 15, y: eppY + 5 };
+        var p2 = { x: lerp(eppX, target.x, 0.55), y: lerp(eppY, target.y, 0.4) };
+        var p3 = { x: target.x, y: target.y - 26 };
+
+        var pt = bezierPoint(p0, p1, p2, p3, rd.t);
+
+        /* Trail */
+        rd.trail.push({ x: pt.x, y: pt.y });
+        if (rd.trail.length > 18) rd.trail.shift();
+
+        for (var tr = 0; tr < rd.trail.length; tr++) {
+          var trAlpha = (tr / rd.trail.length) * 0.35;
+          var trSize = rd.size * (tr / rd.trail.length) * 0.9;
+          ctx.save();
+          ctx.globalAlpha = trAlpha;
+          ctx.beginPath();
+          ctx.fillStyle = rd.color;
+          ctx.arc(rd.trail[tr].x, rd.trail[tr].y, trSize, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        /* Glow */
+        ctx.save();
+        ctx.globalAlpha = 0.18;
+        ctx.beginPath();
+        ctx.fillStyle = rd.color;
+        ctx.arc(pt.x, pt.y, rd.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Core */
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.beginPath();
+        ctx.fillStyle = rd.color;
+        ctx.arc(pt.x, pt.y, rd.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* White center */
+        ctx.beginPath();
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.5;
+        ctx.arc(pt.x, pt.y, rd.size * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return function() { drawBg(); drawMain(); };
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 5: Performance Bar Chart
+     Animated bar growth with easeOutCubic, cyclical
+     ═══════════════════════════════════════════════════════ */
+  var perfDrawFn = (function() {
+    var canvas = document.getElementById('perfCanvas');
+    var bgCanvas = document.getElementById('perfBgCanvas');
+    var dim = { w: 0, h: 0, ctx: null };
+    var bgDim = { w: 0, h: 0, ctx: null };
+    var animStart = null;
+    var bgParticles = [];
+
+    var metrics = [
+      { label: 'Swap Rate', rrVal: 65, eppVal: 18, unit: '%' },
+      { label: 'P50 Latency', rrVal: 340, eppVal: 142, unit: 'ms', scale: 400 },
+      { label: 'Cache Hit', rrVal: 35, eppVal: 78, unit: '%' },
+      { label: 'GPU Util', rrVal: 38, eppVal: 72, unit: '%' }
+    ];
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      bgDim = sizeCanvas(bgCanvas);
+      animStart = null;
+      bgParticles = [];
+      for (var i = 0; i < 28; i++) {
+        bgParticles.push({
+          x: Math.random() * bgDim.w,
+          y: Math.random() * bgDim.h,
+          size: 1 + Math.random() * 2,
+          speedX: (Math.random() - 0.5) * 0.14,
+          speedY: (Math.random() - 0.5) * 0.14,
+          alpha: 0.08 + Math.random() * 0.18,
+          color: ['#10b981', '#3b82f6', '#f59e0b'][Math.floor(Math.random() * 3)]
+        });
+      }
+    }
+
+    function drawBg() {
+      var ctx = bgDim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, bgDim.w, bgDim.h);
+
+      for (var i = 0; i < bgParticles.length; i++) {
+        var p = bgParticles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > bgDim.w) p.speedX *= -1;
+        if (p.y < 0 || p.y > bgDim.h) p.speedY *= -1;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (var a = 0; a < bgParticles.length; a++) {
+        for (var b = a + 1; b < bgParticles.length; b++) {
+          var dx = bgParticles[a].x - bgParticles[b].x;
+          var dy = bgParticles[a].y - bgParticles[b].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 105) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(16,185,129,' + (0.06 * (1 - dist / 105)) + ')';
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(bgParticles[a].x, bgParticles[a].y);
+            ctx.lineTo(bgParticles[b].x, bgParticles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function drawMain() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+
+      if (!animStart) animStart = performance.now();
+      var elapsed = (performance.now() - animStart) / 1000;
+      var progress = Math.min(elapsed / 5.0, 1);
+      var ease = easeOutCubic(progress);
+
+      var groupW = dim.w / metrics.length;
+      var barW = Math.min(36, groupW * 0.26);
+      var maxH = dim.h - 90;
+      var baseY = dim.h - 44;
+
+      /* Grid lines */
+      ctx.save();
+      ctx.strokeStyle = 'rgba(45,42,38,0.05)';
+      ctx.lineWidth = 1;
+      for (var g = 0; g <= 4; g++) {
+        var gy = baseY - (maxH / 4) * g;
+        ctx.beginPath();
+        ctx.moveTo(30, gy);
+        ctx.lineTo(dim.w - 20, gy);
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      /* Legend */
+      ctx.save();
+      ctx.font = '500 10px "Red Hat Text", sans-serif';
+
+      roundRect(ctx, dim.w - 195, 16, 12, 12, 3);
+      ctx.fillStyle = 'rgba(245,115,108,0.7)';
+      ctx.fill();
+      ctx.fillStyle = '#6b6560';
+      ctx.textAlign = 'left';
+      ctx.fillText('Round-Robin', dim.w - 178, 26);
+
+      roundRect(ctx, dim.w - 90, 16, 12, 12, 3);
+      ctx.fillStyle = 'rgba(16,185,129,0.85)';
+      ctx.fill();
+      ctx.fillStyle = '#6b6560';
+      ctx.fillText('EPP', dim.w - 73, 26);
+      ctx.restore();
+
+      for (var i = 0; i < metrics.length; i++) {
+        var m = metrics[i];
+        var cx = groupW * i + groupW / 2;
+        var scale = m.scale || 100;
+
+        var rrH = (m.rrVal / scale) * maxH * ease;
+        var eppH = (m.eppVal / scale) * maxH * ease;
+
+        /* RR bar shadow */
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        roundRect(ctx, cx - barW - 2, baseY - rrH + 3, barW, rrH, 7);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.restore();
+
+        /* RR bar */
+        roundRect(ctx, cx - barW - 3, baseY - rrH, barW, rrH, 7);
+        var rrGrad = ctx.createLinearGradient(cx - barW, baseY - rrH, cx - barW, baseY);
+        rrGrad.addColorStop(0, 'rgba(245,115,108,0.85)');
+        rrGrad.addColorStop(1, 'rgba(245,115,108,0.5)');
+        ctx.fillStyle = rrGrad;
+        ctx.fill();
+
+        /* EPP bar shadow */
+        ctx.save();
+        ctx.globalAlpha = 0.04;
+        roundRect(ctx, cx + 4, baseY - eppH + 3, barW, eppH, 7);
+        ctx.fillStyle = '#000';
+        ctx.fill();
+        ctx.restore();
+
+        /* EPP bar */
+        roundRect(ctx, cx + 3, baseY - eppH, barW, eppH, 7);
+        var eppGrad = ctx.createLinearGradient(cx + 3, baseY - eppH, cx + 3, baseY);
+        eppGrad.addColorStop(0, '#10b981');
+        eppGrad.addColorStop(1, 'rgba(16,185,129,0.55)');
+        ctx.fillStyle = eppGrad;
+        ctx.fill();
+
+        /* Value labels */
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.font = '700 10px "Red Hat Display", sans-serif';
+        ctx.fillStyle = '#f5736c';
+        if (rrH > 8) ctx.fillText(Math.round(m.rrVal * ease) + m.unit, cx - barW / 2 - 3, baseY - rrH - 8);
+        ctx.fillStyle = '#10b981';
+        if (eppH > 8) ctx.fillText(Math.round(m.eppVal * ease) + m.unit, cx + barW / 2 + 3, baseY - eppH - 8);
+
+        /* Category labels */
+        ctx.fillStyle = '#2d2a26';
+        ctx.font = '700 11px "Red Hat Display", sans-serif';
+        ctx.fillText(m.label, cx, baseY + 20);
+        ctx.restore();
+      }
+
+      /* Cycle animation */
+      if (progress >= 1 && elapsed > 12) {
+        animStart = performance.now();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return function() { drawBg(); drawMain(); };
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 6: Full System Architecture
+     Gateway -> EPP -> Pods with adapters -> Token Stream
+     Data packets flowing between nodes with glow trails
+     ═══════════════════════════════════════════════════════ */
+  var archDrawFn = (function() {
+    var canvas = document.getElementById('archCanvas');
+    var bgCanvas = document.getElementById('archBgCanvas');
+    var dim = { w: 0, h: 0, ctx: null };
+    var bgDim = { w: 0, h: 0, ctx: null };
+    var time = 0;
+    var packets = [];
+    var bgParticles = [];
+    var nodes = [];
+    var segments = [];
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      bgDim = sizeCanvas(bgCanvas);
+
+      var cw = dim.w;
+      var ch = dim.h;
+
+      nodes = [
+        { id: 'gw', label: 'API Gateway', x: cw * 0.08, y: ch * 0.5, w: 95, h: 38, color: '#6b6560' },
+        { id: 'epp', label: 'EPP Router', x: cw * 0.30, y: ch * 0.5, w: 95, h: 38, color: '#f59e0b' },
+        { id: 'pod0', label: 'Pod-00', x: cw * 0.55, y: ch * 0.18, w: 85, h: 36, color: '#3b82f6', adapters: ['Legal', 'Code'], util: 0.72 },
+        { id: 'pod1', label: 'Pod-01', x: cw * 0.55, y: ch * 0.50, w: 85, h: 36, color: '#3b82f6', adapters: ['Medical'], util: 0.58 },
+        { id: 'pod2', label: 'Pod-02', x: cw * 0.55, y: ch * 0.82, w: 85, h: 36, color: '#3b82f6', adapters: ['Finance', 'Support'], util: 0.65 },
+        { id: 'out', label: 'Token Stream', x: cw * 0.83, y: ch * 0.50, w: 100, h: 38, color: '#10b981' }
+      ];
+
+      segments = [
+        { from: 0, to: 1 },
+        { from: 1, to: 2 },
+        { from: 1, to: 3 },
+        { from: 1, to: 4 },
+        { from: 2, to: 5 },
+        { from: 3, to: 5 },
+        { from: 4, to: 5 }
+      ];
+
+      packets = [];
+      for (var i = 0; i < 14; i++) {
+        packets.push({
+          t: Math.random(),
+          speed: 0.0012 + Math.random() * 0.002,
+          segment: Math.floor(Math.random() * segments.length),
+          yOff: (Math.random() - 0.5) * 8,
+          size: 2.5 + Math.random() * 2.5,
+          trail: [],
+          color: ['#f59e0b', '#3b82f6', '#10b981', '#7c3aed'][Math.floor(Math.random() * 4)]
+        });
+      }
+
+      bgParticles = [];
+      for (var j = 0; j < 30; j++) {
+        bgParticles.push({
+          x: Math.random() * bgDim.w,
+          y: Math.random() * bgDim.h,
+          size: 1 + Math.random() * 2,
+          speedX: (Math.random() - 0.5) * 0.14,
+          speedY: (Math.random() - 0.5) * 0.14,
+          alpha: 0.08 + Math.random() * 0.15,
+          color: ['#3b82f6', '#f59e0b'][Math.floor(Math.random() * 2)]
+        });
+      }
+    }
+
+    function drawBg() {
+      var ctx = bgDim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, bgDim.w, bgDim.h);
+
+      for (var i = 0; i < bgParticles.length; i++) {
+        var p = bgParticles[i];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < 0 || p.x > bgDim.w) p.speedX *= -1;
+        if (p.y < 0 || p.y > bgDim.h) p.speedY *= -1;
+
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      for (var a = 0; a < bgParticles.length; a++) {
+        for (var b = a + 1; b < bgParticles.length; b++) {
+          var dx = bgParticles[a].x - bgParticles[b].x;
+          var dy = bgParticles[a].y - bgParticles[b].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 100) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(59,130,246,' + (0.06 * (1 - dist / 100)) + ')';
+            ctx.lineWidth = 0.5;
+            ctx.moveTo(bgParticles[a].x, bgParticles[a].y);
+            ctx.lineTo(bgParticles[b].x, bgParticles[b].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    function drawMain() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+      time += 0.006;
+
+      /* Connection lines between nodes */
+      for (var s = 0; s < segments.length; s++) {
+        var fromNode = nodes[segments[s].from];
+        var toNode = nodes[segments[s].to];
+        var sx = fromNode.x + fromNode.w / 2;
+        var sy = fromNode.y;
+        var ex = toNode.x - toNode.w / 2;
+        var ey = toNode.y;
+
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        /* Bezier for smooth curves */
+        var midX = (sx + ex) / 2;
+        ctx.bezierCurveTo(midX, sy, midX, ey, ex, ey);
+        ctx.strokeStyle = 'rgba(45,42,38,0.1)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        /* Arrow at end */
+        var arrowSize = 5;
+        var angle = Math.atan2(ey - sy, ex - sx);
+        ctx.save();
+        ctx.translate(ex, ey);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-arrowSize * 2, -arrowSize);
+        ctx.lineTo(-arrowSize * 2, arrowSize);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(45,42,38,0.12)';
+        ctx.fill();
+        ctx.restore();
+      }
+
+      /* Render nodes */
+      for (var n = 0; n < nodes.length; n++) {
+        var node = nodes[n];
+        var nx = node.x - node.w / 2;
+        var ny = node.y - node.h / 2;
+
+        /* Outer glow */
+        ctx.save();
+        ctx.globalAlpha = 0.08 + 0.04 * Math.sin(time * 1.2 + n);
+        roundRect(ctx, nx - 5, ny - 5, node.w + 10, node.h + 10, 16);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+        ctx.restore();
+
+        /* Node box */
+        roundRect(ctx, nx, ny, node.w, node.h, 12);
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.fill();
+        ctx.strokeStyle = node.color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = '#2d2a26';
+        ctx.font = '700 10px "Red Hat Display", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        if (node.adapters) {
+          ctx.fillText(node.label, node.x, node.y - 7);
+
+          /* Adapter rings */
+          for (var ai = 0; ai < node.adapters.length; ai++) {
+            var ringX = node.x - ((node.adapters.length - 1) * 15) / 2 + ai * 15;
+            ctx.beginPath();
+            ctx.arc(ringX, node.y + 3, 5, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(124,58,237,0.15)';
+            ctx.fill();
+            ctx.strokeStyle = '#7c3aed';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
+
+          /* Micro utilization bar */
+          var ubW = node.w * 0.7;
+          var ubH = 4;
+          var ubX = node.x - ubW / 2;
+          var ubY = node.y + node.h / 2 - 12;
+          roundRect(ctx, ubX, ubY, ubW, ubH, 2);
+          ctx.fillStyle = 'rgba(59,130,246,0.1)';
+          ctx.fill();
+          var utilW = ubW * (node.util + 0.04 * Math.sin(time * 1.2 + n));
+          roundRect(ctx, ubX, ubY, utilW, ubH, 2);
+          ctx.fillStyle = node.util > 0.7 ? '#f59e0b' : '#3b82f6';
+          ctx.fill();
+
+          /* Adapter labels below box */
+          ctx.fillStyle = '#6b6560';
+          ctx.font = '400 7px "Red Hat Text", sans-serif';
+          ctx.fillText(node.adapters.join(', '), node.x, node.y + node.h / 2 + 8);
+        } else {
+          ctx.fillText(node.label, node.x, node.y);
+        }
+        ctx.restore();
+      }
+
+      /* Data packets flowing between nodes */
+      for (var p = 0; p < packets.length; p++) {
+        var pkt = packets[p];
+        pkt.t += pkt.speed;
+        if (pkt.t > 1) {
+          pkt.t = 0;
+          pkt.segment = Math.floor(Math.random() * segments.length);
+          pkt.trail = [];
+          pkt.color = ['#f59e0b', '#3b82f6', '#10b981', '#7c3aed'][Math.floor(Math.random() * 4)];
+        }
+
+        var seg = segments[pkt.segment];
+        var fromN = nodes[seg.from];
+        var toN = nodes[seg.to];
+        var fsx = fromN.x + fromN.w / 2;
+        var fsy = fromN.y;
+        var tex = toN.x - toN.w / 2;
+        var tey = toN.y;
+        var midPx = (fsx + tex) / 2;
+
+        /* Follow the same bezier as the connection line */
+        var tt = pkt.t;
+        var u = 1 - tt;
+        var px = u*u*u*fsx + 3*u*u*tt*midPx + 3*u*tt*tt*midPx + tt*tt*tt*tex;
+        var py = u*u*u*fsy + 3*u*u*tt*fsy + 3*u*tt*tt*tey + tt*tt*tt*tey + pkt.yOff;
+
+        /* Trail */
+        pkt.trail.push({ x: px, y: py });
+        if (pkt.trail.length > 12) pkt.trail.shift();
+
+        for (var tr = 0; tr < pkt.trail.length; tr++) {
+          var trA = (tr / pkt.trail.length) * 0.3;
+          ctx.save();
+          ctx.globalAlpha = trA;
+          ctx.beginPath();
+          ctx.fillStyle = pkt.color;
+          ctx.arc(pkt.trail[tr].x, pkt.trail[tr].y, pkt.size * (tr / pkt.trail.length) * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+
+        /* Glow */
+        ctx.save();
+        ctx.globalAlpha = 0.15;
+        ctx.beginPath();
+        ctx.fillStyle = pkt.color;
+        ctx.arc(px, py, pkt.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Core */
+        ctx.save();
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath();
+        ctx.fillStyle = pkt.color;
+        ctx.arc(px, py, pkt.size, 0, Math.PI * 2);
+        ctx.fill();
+
+        /* Bright center */
+        ctx.beginPath();
+        ctx.fillStyle = '#fff';
+        ctx.globalAlpha = 0.45;
+        ctx.arc(px, py, pkt.size * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return function() { drawBg(); drawMain(); };
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     CANVAS 7: Deploy Background Particles
+     Multi-color floating particle network
+     ═══════════════════════════════════════════════════════ */
+  var deployDrawFn = (function() {
+    var canvas = document.getElementById('deployCanvas');
+    var particles = [];
+    var NUM = 40;
+    var dim = { w: 0, h: 0, ctx: null };
+    var colors = ['#f59e0b', '#3b82f6', '#10b981', '#7c3aed', '#f5736c'];
+
+    function init() {
+      dim = sizeCanvas(canvas);
+      particles = [];
+      for (var i = 0; i < NUM; i++) {
+        particles.push({
+          x: Math.random() * dim.w,
+          y: Math.random() * dim.h,
+          size: 1.2 + Math.random() * 2.8,
+          speedX: (Math.random() - 0.5) * 0.18,
+          speedY: (Math.random() - 0.5) * 0.18,
+          color: colors[i % colors.length],
+          alpha: 0.1 + Math.random() * 0.22
+        });
+      }
+    }
+
+    function draw() {
+      var ctx = dim.ctx;
+      if (!ctx) return;
+      ctx.clearRect(0, 0, dim.w, dim.h);
+
+      /* Connection lines */
+      for (var i = 0; i < particles.length; i++) {
+        for (var j = i + 1; j < particles.length; j++) {
+          var dx = particles[i].x - particles[j].x;
+          var dy = particles[i].y - particles[j].y;
+          var dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < 140) {
+            ctx.beginPath();
+            ctx.strokeStyle = 'rgba(245,158,11,' + (0.07 * (1 - dist / 140)) + ')';
+            ctx.lineWidth = 0.6;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      /* Particles */
+      for (var k = 0; k < particles.length; k++) {
+        var p = particles[k];
+        p.x += p.speedX;
+        p.y += p.speedY;
+        if (p.x < -5) p.x = dim.w + 5;
+        if (p.x > dim.w + 5) p.x = -5;
+        if (p.y < -5) p.y = dim.h + 5;
+        if (p.y > dim.h + 5) p.y = -5;
+
+        /* Glow */
+        ctx.save();
+        ctx.globalAlpha = p.alpha * 0.25;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Outer */
+        ctx.save();
+        ctx.globalAlpha = p.alpha * 0.5;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size * 1.8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        /* Core */
+        ctx.save();
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.fillStyle = p.color;
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    init();
+    window.addEventListener('resize', init);
+    return draw;
+  })();
+
+  /* ═══════════════════════════════════════════════════════
+     MASTER ANIMATION LOOP
+     All canvases animate continuously via requestAnimationFrame
+     ═══════════════════════════════════════════════════════ */
+  function startAllAnimations() {
+    safeRAF('hero', heroDrawFn);
+    safeRAF('problem', problemDrawFn);
+    safeRAF('lora', loraDrawFn);
+    safeRAF('routing', routingDrawFn);
+    safeRAF('perf', perfDrawFn);
+    safeRAF('arch', archDrawFn);
+    safeRAF('deploy', deployDrawFn);
+  }
+
+  startAllAnimations();
+
+  /* Handle resize for all canvases */
+  window.addEventListener('resize', function() {
+    /* Canvases re-init via their own resize handlers */
+    /* Restart animation loops after resize */
+    setTimeout(startAllAnimations, 50);
+  });
+
+  /* Initial state */
+  goToSlide(0);
+
+})();
 </script>
 </body>
 </html>
